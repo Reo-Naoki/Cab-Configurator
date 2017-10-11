@@ -1,0 +1,16 @@
+{
+  "root": "dist",
+  "clean_urls": false,
+  "routes": {
+    "/**": "index.html"
+  },
+  "https_only": true,
+  "proxies": {
+    "/resources/": {
+      "origin": "https://dessinetonmeuble.fr/resources/"
+    },
+    "/modules/": {
+      "origin": "https://dessinetonmeuble.fr/modules/"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+[build]
+  command = "vue-cli-service build --modern"
+  publish="dist"
+
+[[redirects]]
+  from = "/resources/*"
+  to = "https://dessinetonmeuble.fr/resources/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

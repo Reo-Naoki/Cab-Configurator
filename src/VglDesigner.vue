@@ -9,6 +9,7 @@ export default {
   name: 'vgl-designer',
 };
 </script>
+
 <style>
   body {
     margin: 0;

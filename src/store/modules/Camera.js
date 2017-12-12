@@ -10,9 +10,7 @@ const state = {
   enableOrbitControls: true,
   enableRotate: true,
   enablePan: true,
-  prevSelectedObject3D: null, // { object3d, faceIndex }
   selectedObject3D: null, // { object3d, faceIndex }
-  hoveredObject3D: null, // { object3d, point }
 };
 
 const mutations = {
@@ -35,11 +33,7 @@ const mutations = {
     s.enablePan = isEnabled;
   },
   selectObject3D(s, data = null) {
-    if (!s.selectedObject3D || !s.selectedObject3D.object3d.isConnectionBubble) s.prevSelectedObject3D = s.selectedObject3D;
     s.selectedObject3D = Object.freeze(data);
-  },
-  setHoverObject3D(s, data = null) {
-    s.hoveredObject3D = Object.freeze(data);
   },
 };
 

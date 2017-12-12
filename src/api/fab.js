@@ -1,18 +1,12 @@
 import axios from 'axios';
-import { sendMessageAndWait, isInIframe, siteUrl } from '@/api/messages';
 
-const callFabApi = (method = '', payload = {}) => {
-  if (isInIframe) return sendMessageAndWait('fabapi', { method, data: payload });
-  return axios({
-    method: 'post',
-    baseURL: `${siteUrl}/modules/adesigner/fabapi.php`,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    params: { route: method },
-    data: payload,
-  });
-};
+const isProductionBuild = process.env.NODE_ENV === 'production';
+const path = isProductionBuild ? 'https://dessinetonmeuble.fr/' : 'https://dev.dessinetonmeuble.fr/';
 
-export default callFabApi;
+export default axios.create({
+  baseURL: `${path}/modules/adesigner/fabapi.php`,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+});

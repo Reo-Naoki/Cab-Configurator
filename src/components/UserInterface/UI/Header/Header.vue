@@ -1,0 +1,102 @@
+<template>
+  <div class="and-middle-bandeau">
+    <div class="and-wrapper-icon-navbar">
+      <div id="ard-2dzoomminus" class="and-margin-icon">
+        <div class="round-icon white"></div>
+        <div class="and-text-under-icon">Ouvrir projet</div>
+      </div>
+      <div id="ard-2dzoomplus" class="and-margin-icon"></div>
+    </div>
+    <a href="/info" target="_blank" class="and-wrapper-icon-navbar w-inline-block">
+      <div class="and-margin-icon">
+        <div class="round-icon orange"></div>
+        <div class="and-text-under-icon">Aide</div>
+      </div>
+      <div class="and-margin-icon"></div>
+    </a>
+    <div class="and-wrapper-icon-navbar">
+      <div id="ard-undo" class="and-margin-icon" @click.stop="undo">
+        <div class="round-icon grey-blue-hover"></div>
+        <div class="and-text-under-icon">Annuler</div>
+      </div>
+      <div class="and-margin-icon" @click.stop="redo">
+        <div class="round-icon grey-blue-hover"></div>
+        <div class="and-text-under-icon">Refaire</div>
+      </div>
+    </div>
+    <div class="and-wrapper-icon-navbar" @click="saveProject()">
+      <div class="and-margin-icon">
+        <div class="round-icon"></div>
+        <div class="and-text-under-icon">Enregistrer</div>
+      </div>
+    </div>
+    <div class="and-wrapper-icon-navbar">
+      <div class="and-price">
+        <div v-if="price !== '---'">
+          <div class="price-title">{{ price }} €</div>
+          <div class="and-price-info">TTC, livré en 6 sem.</div>
+        </div>
+        <div v-else>
+          <el-link icon="el-icon-refresh" @click.once="updatePrice()" :underline="false">Mettre à jour le prix</el-link>
+        </div>
+      </div>
+      <div class="and-margin-icon" @click="addToCart">
+        <div class="eel-button basket-icon">
+          <div class="fa-basket-icon"></div>
+          <div>Ajouter au panier</div>
+        </div>
+      </div>
+    </div>
+    <ProjectsBox />
+    <History />
+  </div>
+</template>
+
+<script>
+import { Icon, Link } from 'element-ui';
+import { mapActions, mapState } from 'vuex';
+import EventBus from '../../../EventBus/EventBus';
+import ProjectsBox from './Plugins/ProjectsBox';
+import History from './Plugins/History';
+
+export default {
+  name: 'Header',
+  components: {
+    History, ProjectsBox, [Icon.name]: Icon, [Link.name]: Link,
+  },
+  computed: {
+    ...mapState('Panels', [
+      'price',
+    ]),
+    ...mapState('User', {
+      userID: 'id',
+    }),
+  },
+  data() {
+    return {
+      showProjectBox: false,
+    };
+  },
+  methods: {
+    ...mapActions('Panels', [
+      'addToCart',
+    ]),
+    updatePrice() {
+      this.$store.dispatch('Panels/requestGeneralData');
+    },
+    saveProject() {
+      EventBus.$emit('showProjectsList');
+    },
+    redo() {
+      EventBus.$emit('redo');
+    },
+    undo() {
+      EventBus.$emit('undo');
+    },
+  },
+};
+</script>
+
+<style scoped>
+
+</style>

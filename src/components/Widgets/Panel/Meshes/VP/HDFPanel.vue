@@ -1,0 +1,170 @@
+<script>
+import { Vector3 } from 'three';
+import VerticalPanel from './VerticalPanel';
+
+export default {
+  name: 'HDFPanel',
+  mixins: [VerticalPanel],
+  data() {
+    return {
+      positionMarginBottom: 80, // virtual 3D position (removing feuillure)
+      positionMarginLeft: 90, // virtual 3D position (removing feuillure)
+      dimensionsMarginTop: 80, // virtual 3D dimensions (removing feuillure)
+      dimensionsMarginRight: 70, // virtual 3D dimensions (removing feuillure)
+      hasFeuillure: {},
+    };
+  },
+  computed: {
+    fixedPosition: {
+      get() {
+        const { left, bottom } = this.hasFeuillure;
+        const { x, y, z } = this.position;
+        const { width, height, depth } = this.dimensionsByType;
+        return new Vector3(
+          left ? x + (width / 2) + this.positionMarginLeft : x + (width / 2),
+          bottom ? y + (height / 2) + this.positionMarginBottom : y + (height / 2),
+          z + (depth / 2),
+        );
+      },
+      set({ x, y, z }) {
+        const { left, bottom } = this.hasFeuillure;
+        const { width, height, depth } = this.dimensionsByType;
+        this.position = {
+          x: left ? x - (width / 2) - this.positionMarginLeft : x - (width / 2),
+          y: bottom ? y - (height / 2) - this.positionMarginBottom : y - (height / 2),
+          z: z - (depth / 2),
+        };
+      },
+    },
+    dimensionsByType: {
+      get() {
+        const {
+          right, top, bottom, left,
+        } = this.hasFeuillure;
+        const { x, y, thick } = this.dimension;
+        let width = x;
+        let height = y;
+        if (right) width -= this.dimensionsMarginRight;
+        if (top) height -= this.dimensionsMarginTop;
+        if (bottom) height -= this.positionMarginBottom;
+        if (left) width -= this.positionMarginLeft;
+        return {
+          width,
+          height,
+          depth: thick,
+        };
+      },
+      set({ width, height, depth }) {
+        const { right, top } = this.hasFeuillure;
+        this.dimension = {
+          x: right ? width + this.dimensionsMarginRight : width,
+          y: top ? height + this.dimensionsMarginTop : height,
+          thick: depth,
+        };
+      },
+    },
+    materials() {
+      const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
+      return [
+        formattedEdges[1] ? this.material.toString() : 'raw',
+        formattedEdges[3] ? this.material.toString() : 'raw',
+        formattedEdges[2] ? this.material.toString() : 'raw',
+        formattedEdges[0] ? this.material.toString() : 'raw',
+        this.isSelected ? 'selected' : this.material.toString(),
+        this.isSelected ? 'selected' : 'raw',
+      ];
+    },
+  },
+  methods: {
+    setFeuillure(isInit = false) {
+      const hasFeuillure = {
+        left: false, top: false, bottom: false, right: false,
+      };
+      for (let i = 0; i < this.relatedConnections.length; i += 1) {
+        // side detection for HDF connection
+        const currentConnection = this.relatedConnections[i];
+        if (currentConnection.isHDFConnection) {
+          // is left, right, top or bottom connection
+          const { p1 } = this.relatedConnections[i];
+          const cPanel = window.panels[p1.toString()];
+          const { x: cx, y: cy } = cPanel.position;
+          const cType = cPanel.ptype;
+          if (cType === 'VDP') {
+            if (cx < this.position.x) hasFeuillure.left = true;
+            else if (cx > this.position.x) hasFeuillure.right = true;
+          } else if (cType === 'FP') {
+            if (cy < this.position.y) hasFeuillure.bottom = true;
+            else if (cy > this.position.y) hasFeuillure.top = true;
+          }
+        }
+      }
+      if (!isInit) {
+        const newDimension = { ...this.dimension };
+        const newPosition = { ...this.position };
+        if (this.hasFeuillure.top !== hasFeuillure.top) {
+          // top connection changed, fix real dimension
+          if (hasFeuillure.top) {
+            // now have top connection
+            newDimension.y += this.dimensionsMarginTop;
+          } else {
+            newDimension.y -= this.dimensionsMarginTop;
+          }
+        }
+        if (this.hasFeuillure.right !== hasFeuillure.right) {
+          // right connection changed, fix real dimension
+          if (hasFeuillure.right) {
+            // now have right connection
+            newDimension.x += this.dimensionsMarginRight;
+          } else {
+            newDimension.x -= this.dimensionsMarginRight;
+          }
+        }
+        if (this.hasFeuillure.left !== hasFeuillure.left) {
+          // left connection changed, fix real position
+          if (hasFeuillure.left) {
+            // now have left connection
+            newPosition.x -= this.positionMarginLeft;
+            newDimension.x += this.positionMarginLeft;
+          } else {
+            newPosition.x += this.positionMarginLeft;
+            newDimension.x -= this.positionMarginLeft;
+          }
+        }
+        if (this.hasFeuillure.bottom !== hasFeuillure.bottom) {
+          // bottom connection changed, fix real position
+          if (hasFeuillure.bottom) {
+            // now have bottom connection
+            newPosition.y -= this.positionMarginBottom;
+            newDimension.y += this.positionMarginBottom;
+          } else {
+            newPosition.y += this.positionMarginBottom;
+            newDimension.y -= this.positionMarginBottom;
+          }
+        }
+        if (newDimension.x !== this.dimension.x || newDimension.y !== this.dimension.y || newDimension.z !== this.dimension.z) {
+          // check for changes
+          this.dimension = newDimension;
+        }
+        if (newPosition.x !== this.position.x || newPosition.y !== this.position.y) {
+          this.position = newPosition;
+        }
+      }
+      this.hasFeuillure = hasFeuillure;
+      const self = this;
+      this.$nextTick(() => self.updateColliding());
+    },
+  },
+  mounted() {
+    this.setFeuillure(true);
+  },
+  watch: {
+    relatedConnections() {
+      this.setFeuillure();
+    },
+  },
+};
+</script>
+
+<style scoped>
+
+</style>

@@ -2,9 +2,9 @@
   <div>
     <Header />
     <div class="content-vgl">
-      <PlankEditor :layers="getLayers"/>
+      <PlankEditor />
       <div id="content-3d" class="content-3d">
-        <vgl-renderer ref="renderer" :antialias="true" style="height: 100%" precision="highp" power-preference="high-performance" :preserve-drawing-buffer="true" >
+        <vgl-renderer ref="renderer" :antialias="true" style="height: 100%" precision="highp" power-preference="high-performance" :preserve-drawing-buffer="true">
           <Materials :materials="materials" />
           <Camera />
           <vgl-scene ref="scene" backgroundColor="#f8f8ff">
@@ -19,8 +19,7 @@
               color-grid="#cfcfcf" />
           </vgl-scene>
         </vgl-renderer>
-        <DisplayOptions :layers="getLayers"/>
-        <ToolBar />
+        <DisplayOptions />
         <ButtonPlus />
       </div>
     </div>
@@ -29,7 +28,6 @@
 
 <script>
 import Vue from 'vue';
-import { mapState } from 'vuex';
 import * as THREE from 'three';
 import Materials from './Materials/Materials';
 import EventBus from './EventBus/EventBus';
@@ -39,19 +37,17 @@ import Header from './UserInterface/UI/Header/Header';
 import PlankEditor from './UserInterface/PlankEditor/PlankEditor';
 import ButtonPlus from './UserInterface/UI/ButtonPlus';
 import DisplayOptions from './UserInterface/UI/DisplayOptions/DisplayOptions';
-import ToolBar from './UserInterface/UI/ToolBar/ToolBar';
 
 export default {
   name: 'app',
   components: {
+    DisplayOptions,
     ButtonPlus,
     PlankEditor,
     Header,
     Panels,
     Camera,
     Materials,
-    DisplayOptions,
-    ToolBar,
   },
   props: {
     materials: {
@@ -121,25 +117,7 @@ export default {
     window.app = this;
     window.vue = Vue;
   },
-  computed: {
-    ...mapState('Panels', [
-      'panels',
-      'layers',
-    ]),
-    getLayers() {
-      let panelLayers = this.panels.filter(l => l.layer).map(l => ({ name: l.layer }));
-      panelLayers = panelLayers.concat(this.layers);
-      panelLayers = panelLayers.filter((l, index) => panelLayers.findIndex(layer => layer.name === l.name) === index);
-      panelLayers.sort((a, b) => ((a.name > b.name || b.name === 'Structure') ? 1 : -1));
-      this.setLayers(panelLayers);
-
-      return panelLayers;
-    },
-  },
   methods: {
-    setLayers(data) {
-      this.$store.commit('Panels/setLayers', data);
-    },
     handleUpdateMaterial({ oldMaterialID, newMaterialID, color }) {
       if (newMaterialID == null && color == null) {
         this.$store.dispatch('Panels/replaceMaterialInPanels', { oldMaterial: oldMaterialID, newMaterial: 1 });
@@ -155,5 +133,6 @@ export default {
   },
 };
 </script>
+
 <style>
 </style>

@@ -16,6 +16,7 @@
 <script>
 import { Vector3 } from 'three';
 // import EventBus from '../../../EventBus/EventBus';
+import PlanksDimensions from '../Models/PlanksDimensions';
 
 export default {
   name: 'PlankDimensions',
@@ -43,8 +44,15 @@ export default {
     },
   },
   mounted() {
+    this.addElementsToDOM();
     this.setAsPlankDimensionHelper();
+    this.changeEventHandler(true);
+    this.vglNamespace.beforeRender.push(this.updateStyle);
     window.mdr = this;
+  },
+  beforeDestroy() {
+    this.changeEventHandler(false);
+    this.removeElements();
   },
   data() {
     return {
@@ -53,9 +61,18 @@ export default {
       arrowHeadWidth: 500,
       arrowColor: '#808080',
       magnetRange: 1000,
+      inputElement: null,
+      containerElement: null,
+      selectedArrow: null,
     };
   },
   computed: {
+    domElement() {
+      return this.vglNamespace.renderers[0].inst.domElement;
+    },
+    cameraInst() {
+      return this.vglNamespace.cameras.camera1;
+    },
     arrows() {
       const {
         plankName, plankType, plankPosition, plankDimension,
@@ -101,27 +118,31 @@ export default {
     },
   },
   methods: {
-    select() {
-      // TODO
-      // this.arrowColor = isSelected ? '#123456' : '#808080';
+    projectVectorTo2D(x, y, z) {
+      const p = new Vector3(x, y, z);
+      const vector = p.project(this.cameraInst);
+
+      vector.x = (vector.x + 1) / 2 * this.domElement.width;
+      vector.y = -(vector.y - 1) / 2 * this.domElement.height + 20;
+
+      return vector;
     },
-    /* getNeighbours() {
-      const { arrows, vglNamespace: { object3ds } } = this;
-      const planks = Object.values(object3ds).filter(o => o.name !== this.plankName && o.isPanel);
-      const neighbours = {};
-      const raycaster = new Raycaster();
-      for (let i = 0; i < arrows.length; i += 1) {
-        raycaster.set(arrows[i].position, arrows[i].dir);
-        const intersects = raycaster.intersectObjects(planks, false);
-        const key = arrows[i].name.split('_').pop();
-        if (intersects.length > 0) {
-          [neighbours[key]] = intersects;
-        } else {
-          neighbours[key] = null;
+    select(object3d) {
+      // TODO
+      if (object3d) {
+        this.selectedArrow = object3d.name.split('_').pop();
+        if (this.selectedArrow === 'upper' || this.selectedArrow === 'lower') {
+          if (this.plankType === 'FP') this.inputElement.value = this.plankDimension.depth / 10;
+          else this.inputElement.value = this.plankDimension.height / 10;
+        } else if (this.selectedArrow === 'left' || this.selectedArrow === 'right') {
+          if (this.plankType === 'VDP') this.inputElement.value = this.plankDimension.depth / 10;
+          else this.inputElement.value = this.plankDimension.width / 10;
         }
+      } else {
+        this.selectedArrow = null;
+        this.updateStyle();
       }
-      return neighbours;
-    }, */
+    },
     setAsPlankDimensionHelper() {
       const { arrows } = this.$refs;
       if (arrows == null) return;
@@ -150,7 +171,7 @@ export default {
       if (direction === 'upper') {
         const { y, z } = this.arrows[0].position;
         if (this.plankType === 'FP') {
-          const zDistance = Math.round(Math.abs(Math.abs(z) - Math.abs(position.z)));
+          const zDistance = Math.round(Math.abs(z - position.z));
           if (z < position.z) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + zDistance };
@@ -160,18 +181,18 @@ export default {
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - zDistance };
           }
         } else {
-          const yDistance = Math.round(Math.abs(Math.abs(y) - Math.abs(position.y)));
-          if (y < position.y) {
+          const yDistance = Math.round(Math.abs(y - position.y));
+          if (y > position.y) {
             // increase
-            newDimension = { width, height: height + yDistance, depth };
-          } else {
             newDimension = { width, height: height - yDistance, depth };
+          } else {
+            newDimension = { width, height: height + yDistance, depth };
           }
         }
       } else if (direction === 'right') {
         const { x, z } = this.arrows[1].position;
         if (this.plankType === 'VDP') {
-          const zDistance = Math.round(Math.abs(Math.abs(z) - Math.abs(position.z)));
+          const zDistance = Math.round(Math.abs(z - position.z));
           if (z < position.z) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + zDistance };
@@ -181,7 +202,7 @@ export default {
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - zDistance };
           }
         } else {
-          const xDistance = Math.round(Math.abs(Math.abs(x) - Math.abs(position.x)));
+          const xDistance = Math.round(Math.abs(x - position.x));
           if (x < position.x) {
             // increase
             newDimension = { width: width + xDistance, height, depth };
@@ -192,7 +213,7 @@ export default {
       } else if (direction === 'lower') {
         const { y, z } = this.arrows[2].position;
         if (this.plankType === 'FP') {
-          const zDistance = Math.round(Math.abs(Math.abs(z) - Math.abs(position.z)));
+          const zDistance = Math.round(Math.abs(z - position.z));
           if (z < position.z) {
             // increase
             newDimension = { width, height, depth: depth + zDistance };
@@ -200,7 +221,7 @@ export default {
             newDimension = { width, height, depth: depth - zDistance };
           }
         } else {
-          const yDistance = Math.round(Math.abs(Math.abs(y) - Math.abs(position.y)));
+          const yDistance = Math.round(Math.abs(y - position.y));
           if (y < position.y) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y + yDistance, z: this.plankPosition.z };
@@ -214,7 +235,7 @@ export default {
         // TODO
         const { x, z } = this.arrows[3].position;
         if (this.plankType === 'VDP') {
-          const zDistance = Math.round(Math.abs(Math.abs(z) - Math.abs(position.z)));
+          const zDistance = Math.round(Math.abs(z - position.z));
           if (z < position.z) {
             // increase
             newDimension = { width, height, depth: depth + zDistance };
@@ -222,7 +243,7 @@ export default {
             newDimension = { width, height, depth: depth - zDistance };
           }
         } else {
-          const xDistance = Math.round(Math.abs(Math.abs(x) - Math.abs(position.x)));
+          const xDistance = Math.round(Math.abs(x - position.x));
           if (x < position.x) {
             // increase
             newDimension = { width: width - xDistance, height, depth };
@@ -233,16 +254,186 @@ export default {
           }
         }
       }
+
       if (newDimension) {
-        // something has changed, check value integrity
+        let dimensionX;
+        let dimensionY;
+        let key;
+
+        if (this.plankType === 'FP') {
+          dimensionX = newDimension.depth;
+          dimensionY = newDimension.width;
+          if (direction === 'upper' || direction === 'lower') key = 'x';
+          else key = 'y';
+        } else if (this.plankType === 'VDP') {
+          dimensionX = newDimension.depth;
+          dimensionY = newDimension.height;
+          if (direction === 'upper' || direction === 'lower') key = 'y';
+          else key = 'x';
+        } else {
+          dimensionX = newDimension.width;
+          dimensionY = newDimension.height;
+          if (direction === 'upper' || direction === 'lower') key = 'y';
+          else key = 'x';
+        }
+
+        const dimensions = new PlanksDimensions({ x: dimensionX / 10, y: dimensionY / 10, thick: null });
+
+        if (!dimensions.isValid) {
+          dimensions.makeValid(key);
+
+          if (this.plankType === 'FP') {
+            if (direction === 'upper' || direction === 'lower') {
+              newDimension.depth = dimensions[key] * 10;
+              if (direction === 'upper') newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - newDimension.depth + depth };
+            } else {
+              newDimension.width = dimensions[key] * 10;
+              if (direction === 'left') newPosition = { x: this.plankPosition.x - newDimension.width + width, y: this.plankPosition.y, z: this.plankPosition.z };
+            }
+          } else if (this.plankType === 'VDP') {
+            if (direction === 'upper' || direction === 'lower') {
+              newDimension.height = dimensions[key] * 10;
+              if (direction === 'lower') newPosition = { x: this.plankPosition.x, y: this.plankPosition.y - newDimension.height + height, z: this.plankPosition.z };
+            } else {
+              newDimension.depth = dimensions[key] * 10;
+              if (direction === 'right') newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - newDimension.depth + depth };
+            }
+          } else if (this.plankType === 'VP') {
+            if (direction === 'upper' || direction === 'lower') {
+              newDimension.height = dimensions[key] * 10;
+              if (direction === 'lower') newPosition = { x: this.plankPosition.x, y: this.plankPosition.y - newDimension.height + height, z: this.plankPosition.z };
+            } else {
+              newDimension.width = dimensions[key] * 10;
+              if (direction === 'left') newPosition = { x: this.plankPosition.x - newDimension.width + width, y: this.plankPosition.y, z: this.plankPosition.z };
+            }
+          }
+        }
+
+        this.inputElement.value = dimensions[key];
+
         if (newPosition) this.$emit('update:plankPosition', newPosition);
+        // something has changed, check value integrity
         this.$emit('update:plankDimension', newDimension);
+      }
+    },
+    resizeByValue(direction, value) {
+      let newPosition = null;
+
+      if (direction === 'upper') {
+        if (this.plankType === 'FP') newPosition = { x: this.arrows[0].position.x, y: this.arrows[0].position.y, z: this.arrows[0].position.z - value + this.plankDimension.depth };
+        else newPosition = { x: this.arrows[0].position.x, y: this.arrows[0].position.y + value - this.plankDimension.height, z: this.arrows[0].position.z };
+      } else if (direction === 'lower') {
+        if (this.plankType === 'FP') newPosition = { x: this.arrows[2].position.x, y: this.arrows[2].position.y, z: this.arrows[2].position.z + value - this.plankDimension.depth };
+        else newPosition = { x: this.arrows[2].position.x, y: this.arrows[2].position.y - value + this.plankDimension.height, z: this.arrows[2].position.z };
+      } else if (direction === 'left') {
+        if (this.plankType === 'VDP') newPosition = { x: this.arrows[3].position.x, y: this.arrows[3].position.y, z: this.arrows[3].position.z + value - this.plankDimension.depth };
+        else newPosition = { x: this.arrows[3].position.x - value + this.plankDimension.width, y: this.arrows[3].position.y, z: this.arrows[3].position.z };
+      } else if (direction === 'right') {
+        if (this.plankType === 'VDP') newPosition = { x: this.arrows[1].position.x, y: this.arrows[1].position.y, z: this.arrows[1].position.z - value + this.plankDimension.depth };
+        else newPosition = { x: this.arrows[1].position.x + value - this.plankDimension.width, y: this.arrows[1].position.y, z: this.arrows[1].position.z };
+      }
+
+      this.resizeLogic(direction, newPosition);
+    },
+    createInput() {
+      const inputField = document.createElement('input');
+      inputField.classList.add('plank-dimension-input');
+      inputField.setAttribute('type', 'number');
+      inputField.defaultValue = '';
+
+      return inputField;
+    },
+    updateStyle() {
+      this.inputElement.style.display = this.selectedArrow ? 'unset' : 'none';
+      this.inputElement.value = this.selectedArrow ? this.inputElement.value : '0';
+
+      if (this.selectedArrow) this.inputElement.focus();
+      let inputPosition = new Vector3(
+        this.plankPosition.x,
+        this.plankPosition.y,
+        this.plankPosition.z,
+      );
+
+      switch (this.selectedArrow) {
+        case 'upper':
+          inputPosition = this.arrows[0].position;
+          break;
+        case 'right':
+          inputPosition = this.arrows[1].position;
+          break;
+        case 'lower':
+          inputPosition = this.arrows[2].position;
+          break;
+        case 'left':
+          inputPosition = this.arrows[3].position;
+          break;
+        default:
+          break;
+      }
+
+      const vectorTop2D = this.projectVectorTo2D(inputPosition.x, inputPosition.y, inputPosition.z);
+      const rect = this.domElement.getBoundingClientRect();
+      vectorTop2D.x = Math.max(30, Math.min(vectorTop2D.x, rect.width - 200));
+      vectorTop2D.y = Math.max(30, Math.min(vectorTop2D.y, rect.height - 50));
+      this.inputElement.style.top = `${vectorTop2D.y}px`;
+      this.inputElement.style.left = `${vectorTop2D.x}px`;
+    },
+    addElementsToDOM() {
+      const appDiv = document.getElementById('content-3d');
+      const container = document.createElement('div');
+      container.classList.add('dimension-input-container');
+      this.inputElement = this.createInput();
+      container.appendChild(this.inputElement);
+      this.containerElement = container;
+      appDiv.appendChild(container);
+    },
+    removeElements() {
+      const appDiv = document.getElementById('content-3d');
+      appDiv.removeChild(this.containerElement);
+    },
+    onKeyDown(event) {
+      if (event.key === 'Escape') {
+        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
+        const auxclickEvent = new MouseEvent('auxclick', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        });
+        appDiv.dispatchEvent(auxclickEvent);
+      } else if (event.key === 'Enter') {
+        const { value } = this.inputElement;
+        this.resizeByValue(this.selectedArrow, parseFloat(value) * 10);
+        this.inputElement.value = '';
+        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
+        const clickEvent = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        });
+        appDiv.dispatchEvent(clickEvent);
+      } else {
+        this.onKeyUp();
+      }
+    },
+    onKeyUp() {
+      if (this.inputElement.value.length === 0) this.inputElement.value = '0';
+      this.inputElement.value = parseFloat(this.inputElement.value);
+    },
+    changeEventHandler(bool) {
+      if (bool) {
+        this.inputElement.addEventListener('keydown', this.onKeyDown);
+        this.inputElement.addEventListener('keyup', this.onKeyUp);
+      } else {
+        this.inputElement.removeEventListener('keydown', this.onKeyDown);
+        this.inputElement.addEventListener('keyup', this.onKeyUp);
       }
     },
   },
 };
 </script>
 
-<style scoped>
-
+<style>
+  .plank-dimension-input {
+    position: absolute;
+  }
 </style>

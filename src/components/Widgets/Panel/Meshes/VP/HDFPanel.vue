@@ -7,10 +7,10 @@ export default {
   mixins: [VerticalPanel],
   data() {
     return {
-      positionMarginBottom: 80, // virtual 3D position (removing feuillure)
-      positionMarginLeft: 90, // virtual 3D position (removing feuillure)
+      dimensionsMarginBottom: 80, // virtual 3D dimensions (removing feuillure)
+      dimensionsMarginLeft: 80, // virtual 3D dimensions (removing feuillure)
       dimensionsMarginTop: 80, // virtual 3D dimensions (removing feuillure)
-      dimensionsMarginRight: 70, // virtual 3D dimensions (removing feuillure)
+      dimensionsMarginRight: 80, // virtual 3D dimensions (removing feuillure)
       hasFeuillure: {},
     };
   },
@@ -21,8 +21,8 @@ export default {
         const { x, y, z } = this.position;
         const { width, height, depth } = this.dimensionsByType;
         return new Vector3(
-          left ? x + (width / 2) + this.positionMarginLeft : x + (width / 2),
-          bottom ? y + (height / 2) + this.positionMarginBottom : y + (height / 2),
+          left ? x + (width / 2) + this.dimensionsMarginLeft : x + (width / 2),
+          bottom ? y + (height / 2) + this.dimensionsMarginBottom : y + (height / 2),
           z + (depth / 2),
         );
       },
@@ -30,8 +30,8 @@ export default {
         const { left, bottom } = this.hasFeuillure;
         const { width, height, depth } = this.dimensionsByType;
         this.position = {
-          x: left ? x - (width / 2) - this.positionMarginLeft : x - (width / 2),
-          y: bottom ? y - (height / 2) - this.positionMarginBottom : y - (height / 2),
+          x: left ? x - (width / 2) - this.dimensionsMarginLeft : x - (width / 2),
+          y: bottom ? y - (height / 2) - this.dimensionsMarginBottom : y - (height / 2),
           z: z - (depth / 2),
         };
       },
@@ -46,8 +46,8 @@ export default {
         let height = y;
         if (right) width -= this.dimensionsMarginRight;
         if (top) height -= this.dimensionsMarginTop;
-        if (bottom) height -= this.positionMarginBottom;
-        if (left) width -= this.positionMarginLeft;
+        if (bottom) height -= this.dimensionsMarginBottom;
+        if (left) width -= this.dimensionsMarginLeft;
         return {
           width,
           height,
@@ -55,13 +55,18 @@ export default {
         };
       },
       set({ width, height, depth }) {
-        const { right, top } = this.hasFeuillure;
+        const {
+          right, top, bottom, left,
+        } = this.hasFeuillure;
         this.dimension = {
-          x: right ? width + this.dimensionsMarginRight : width,
-          y: top ? height + this.dimensionsMarginTop : height,
+          x: width + (right ? this.dimensionsMarginRight : 0) + (left ? this.dimensionsMarginLeft : 0),
+          y: height + (top ? this.dimensionsMarginTop : 0) + (bottom ? this.dimensionsMarginBottom : 0),
           thick: depth,
         };
       },
+    },
+    isHDFPanel() {
+      return true;
     },
     materials() {
       const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
@@ -123,22 +128,22 @@ export default {
           // left connection changed, fix real position
           if (hasFeuillure.left) {
             // now have left connection
-            newPosition.x -= this.positionMarginLeft;
-            newDimension.x += this.positionMarginLeft;
+            newPosition.x -= this.dimensionsMarginLeft;
+            newDimension.x += this.dimensionsMarginLeft;
           } else {
-            newPosition.x += this.positionMarginLeft;
-            newDimension.x -= this.positionMarginLeft;
+            newPosition.x += this.dimensionsMarginLeft;
+            newDimension.x -= this.dimensionsMarginLeft;
           }
         }
         if (this.hasFeuillure.bottom !== hasFeuillure.bottom) {
           // bottom connection changed, fix real position
           if (hasFeuillure.bottom) {
             // now have bottom connection
-            newPosition.y -= this.positionMarginBottom;
-            newDimension.y += this.positionMarginBottom;
+            newPosition.y -= this.dimensionsMarginBottom;
+            newDimension.y += this.dimensionsMarginBottom;
           } else {
-            newPosition.y += this.positionMarginBottom;
-            newDimension.y -= this.positionMarginBottom;
+            newPosition.y += this.dimensionsMarginBottom;
+            newDimension.y -= this.dimensionsMarginBottom;
           }
         }
         if (newDimension.x !== this.dimension.x || newDimension.y !== this.dimension.y || newDimension.z !== this.dimension.z) {

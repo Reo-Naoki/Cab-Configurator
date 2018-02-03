@@ -14,7 +14,9 @@
                    @hoveron="handleOverOn"
                    @hoveroff="handleOverOff"
                    @dragstart="handleDragStart"
+                   @hovermove="handleHoverMove"
                    @dragend="handleDragEnd"
+                   @dragcancel="handleDragCancel"
                    @move="handleMove"/>
     <Connections ref="connections"/>
   </div>
@@ -36,6 +38,8 @@ export default {
       'enableDragControls',
       'enableMoving',
       'enableResizing',
+      'prevPosition',
+      'prevDimension',
     ]),
   },
   created() {
@@ -69,12 +73,51 @@ export default {
     },
     handleDragStart(object3d, faceIndex) {
       if (!object3d) return;
+
       // console.log('click on Object3D', object3d);
       this.$store.commit('Camera/selectObject3D', { object3d, faceIndex });
+
+      if (object3d.isPanel) {
+        window.panels[object3d.name].setDragging(true);
+        this.$store.commit('Panels/setPrevPosition', window.panels[object3d.name].position);
+        this.$store.commit('Panels/setPrevDimension', window.panels[object3d.name].dimension);
+      } else {
+        const id = object3d.name.split('_')[0];
+        if (!window.panels[id]) return;
+        window.panels[id].setDragging(true);
+        this.$store.commit('Panels/setPrevPosition', window.panels[id].position);
+        this.$store.commit('Panels/setPrevDimension', window.panels[id].dimension);
+      }
     },
-    handleDragEnd() {
+    handleHoverMove(object3d, pointOffset) {
+      if (!object3d) return;
+      this.$store.commit('Camera/setHoverObject3D', { object3d, pointOffset });
+    },
+    handleDragEnd(object3d) {
       // save history
+      if (object3d.isPanel) window.panels[object3d.name].setDragging(false);
+      else {
+        const id = object3d.name.split('_')[0];
+        if (!window.panels[id]) return;
+        window.panels[id].setDragging(false);
+      }
       EventBus.$emit('save');
+    },
+    handleDragCancel(object3d) {
+      // save history
+      if (object3d.isPanel) {
+        window.panels[object3d.name].position = this.prevPosition;
+        window.panels[object3d.name].dimension = this.prevDimension;
+        window.panels[object3d.name].setDragging(false);
+      } else {
+        const id = object3d.name.split('_')[0];
+        if (!window.panels[id]) return;
+        window.panels[id].position = this.prevPosition;
+        window.panels[id].dimension = this.prevDimension;
+        window.panels[id].setDragging(false);
+      }
+      // this.$store.commit('Panels/enableMoving', false);
+      // this.$store.commit('Panels/enableResizing', false);
     },
     handleMove(payload) {
       // position is a ThreeJS value

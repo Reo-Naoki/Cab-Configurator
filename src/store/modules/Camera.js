@@ -11,6 +11,8 @@ const state = {
   enableRotate: true,
   enablePan: true,
   selectedObject3D: null, // { object3d, faceIndex }
+  hoveredObject3D: null, // { object3d, pointOffset }
+  dragging: false,
 };
 
 const mutations = {
@@ -34,6 +36,13 @@ const mutations = {
   },
   selectObject3D(s, data = null) {
     s.selectedObject3D = Object.freeze(data);
+    if (data) s.dragging = true;
+  },
+  setHoverObject3D(s, data = null) {
+    s.hoveredObject3D = Object.freeze(data);
+  },
+  releaseDrag(s) {
+    s.dragging = false;
   },
 };
 

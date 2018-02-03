@@ -15,6 +15,8 @@ const state = {
   enableMoving: false,
   enableResizing: false,
   price: '---',
+  prevPosition: null,
+  prevDimension: null,
 };
 
 const getters = {
@@ -52,6 +54,12 @@ const mutations = {
   },
   addPanel(s, p) {
     Vue.set(s.panels, s.panels.length, { ...p, id: p.id.split('-')[0], material: p.material.toString() });
+  },
+  setPrevPosition(s, prevPosition) {
+    s.prevPosition = prevPosition;
+  },
+  setPrevDimension(s, prevDimension) {
+    s.prevDimension = prevDimension;
   },
   setPanelData(s, { index, key, data }) {
     if (index >= s.panels.length || index < 0) return;

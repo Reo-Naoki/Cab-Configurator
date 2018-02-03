@@ -30,8 +30,9 @@ export default {
   data() {
     return {
       selected: null,
-      hovered: null,
+      hoveredObject: null,
       selectedObject: null,
+      isDragging: false,
     };
   },
   computed: {
@@ -55,37 +56,57 @@ export default {
   },
   methods: {
     activate() {
-      this.domElement.addEventListener('mousedown', this.onDocumentMouseDown, false);
-      this.domElement.addEventListener('mousemove', this.onDocumentMouseMove, false);
-      this.domElement.addEventListener('click', this.onDocumentMouseClick, false);
-      this.domElement.addEventListener('auxclick', this.onDocumentMouseClick, false);
-      this.domElement.addEventListener('mouseleave', this.onDocumentMouseCancel, false);
-      this.domElement.addEventListener('touchmove', this.onDocumentTouchMove, false);
       this.domElement.addEventListener('touchstart', this.onDocumentTouchStart, false);
-      this.domElement.addEventListener('touchend', this.onDocumentTouchEnd, false);
+      this.domElement.addEventListener('keydown', this.onDocumentKeyDown, false);
+      this.domElement.addEventListener('mousedown', this.onDocumentMouseDown, false);
+      this.domElement.addEventListener('click', this.onDocumentMouseClick, false);
+      this.domElement.addEventListener('auxclick', this.onDocumentRightMouseClick, false);
+      this.domElement.addEventListener('wheel', this.onDocumentMouseWheel, false);
+
+      let appDiv = this.domElement;
+      if (document.getElementById('content-3d')) appDiv = document.getElementById('content-3d');
+
+      appDiv.addEventListener('mousemove', this.onDocumentMouseMove, false);
+      appDiv.addEventListener('touchmove', this.onDocumentTouchMove, false);
+      appDiv.addEventListener('touchend', this.onDocumentTouchEnd, false);
     },
     deactivate() {
-      this.domElement.removeEventListener('mousemove', this.onDocumentMouseMove, false);
-      this.domElement.removeEventListener('click', this.onDocumentMouseClick, false);
-      this.domElement.removeEventListener('auxclick', this.onDocumentMouseClick, false);
-      this.domElement.removeEventListener('mouseleave', this.onDocumentMouseCancel, false);
-      this.domElement.removeEventListener('touchmove', this.onDocumentTouchMove, false);
       this.domElement.removeEventListener('touchstart', this.onDocumentTouchStart, false);
-      this.domElement.removeEventListener('touchend', this.onDocumentTouchEnd, false);
+      this.domElement.removeEventListener('keydown', this.onDocumentKeyDown, false);
+      this.domElement.removeEventListener('click', this.onDocumentMouseClick, false);
+      this.domElement.removeEventListener('auxclick', this.onDocumentRightMouseClick, false);
+      this.domElement.removeEventListener('wheel', this.onDocumentMouseWheel, false);
+
+      let appDiv = this.domElement;
+      if (document.getElementById('content-3d')) appDiv = document.getElementById('content-3d');
+
+      appDiv.removeEventListener('mousemove', this.onDocumentMouseMove, false);
+      appDiv.removeEventListener('touchmove', this.onDocumentTouchMove, false);
+      appDiv.removeEventListener('touchend', this.onDocumentTouchEnd, false);
+    },
+    setRaycaster(event) {
+      const rect = this.domElement.getBoundingClientRect();
+      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.mouse, this.cameraInst);
+    },
+    onDocumentMouseWheel(event) {
+      event.preventDefault();
+
+      this.onDocumentMouseMove(event);
     },
     onDocumentMouseDown(event) {
       event.preventDefault();
+
       this.prevMouse.x = event.clientX;
       this.prevMouse.y = event.clientY;
+      this.isDragging = true;
     },
     onDocumentMouseMove(event) {
       event.preventDefault();
-      const rect = this.domElement.getBoundingClientRect();
 
-      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.mouse, this.cameraInst);
+      this.setRaycaster(event);
+      const intersects = this.raycaster.intersectObjects(this.objects, true);
 
       if (this.selected != null && this.enable && ((this.enableMoving && (this.selected.isPanel || this.selected.isCoordinate)) || (this.enableResizing && this.selected.isDimension))) {
         if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
@@ -107,55 +128,63 @@ export default {
         return;
       }
 
-      // if (this.selectedObject != null) {
-      //   const position = this.intersection.sub(this.offset).applyMatrix4(this.inverseMatrix);
-      //   const roundPosition = {
-      //     x: Math.round(position.x),
-      //     y: Math.round(position.y),
-      //     z: Math.round(position.z),
-      //   };
-      //   this.$emit('move', {
-      //     event,
-      //     selected: this.selectedObject,
-      //     position: roundPosition,
-      //     faceIndex: this.selectedFaceIndex,
-      //     magnetism: !event.shiftKey,
-      //   });
-      // }
-      this.raycaster.setFromCamera(this.mouse, this.cameraInst);
-      const intersects = this.raycaster.intersectObjects(this.objects, true);
+      if (intersects.length > 0) {
+        const { object, point } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+        if (object.isPanel && this.selectedObject === object && this.enableMoving && !this.isDragging) {
+          this.$emit('hovermove', object, point.clone().sub(object.position));
+        } else if (!object.isVertex) {
+          this.$store.commit('Camera/setHoverObject3D');
+        }
+      } else {
+        this.$store.commit('Camera/setHoverObject3D');
+      }
 
       if (intersects.length > 0) {
-        const { object } = intersects[0];
+        const { object } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+
         this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal), this.worldPosition.setFromMatrixPosition(object.matrixWorld));
 
-        if (this.hovered !== object) {
+        if (this.hoveredObject !== object) {
           this.domElement.style.cursor = 'pointer';
-          this.hovered = object;
-          this.$emit('hoveron', object);
+          this.hoveredObject = object;
+          // this.$emit('hoveron', object);
         }
-      } else if (this.hovered !== null) {
+      } else if (this.hoveredObject !== null) {
         this.domElement.style.cursor = 'auto';
-        this.hovered = null;
-        this.$emit('hoveroff', this.hovered);
+        this.hoveredObject = null;
+        // this.$emit('hoveroff', this.hoveredObject);
       }
     },
     onDocumentMouseClick(event) {
       event.preventDefault();
+      this.isDragging = false;
 
       if (this.selected) {
+        this.$store.commit('Panels/enableMoving', false);
+        this.$store.commit('Panels/enableResizing', false);
         this.$emit('dragend', this.selected);
+        this.$emit('hoveroff');
         this.selected = null;
 
-        this.domElement.style.cursor = this.hovered ? 'pointer' : 'auto';
-      } else {
+        this.domElement.style.cursor = this.hoveredObject ? 'pointer' : 'auto';
+      } else if (this.prevMouse.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
         this.raycaster.setFromCamera(this.mouse, this.cameraInst);
 
         const intersects = this.raycaster.intersectObjects(this.objects, true);
         if (intersects.length > 0) {
-          const { object, faceIndex } = intersects[0];
+          const { object, faceIndex } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+
           this.selected = (object.isDimension || object.isCoordinate) ? object.parent : object;
           this.selectedFaceIndex = faceIndex;
+
+          if (object.isPanel) {
+            this.selectedPanel = object;
+            this.selectedPanelFaceIndex = faceIndex;
+          } else if (object.isVertex) {
+            this.selected = this.selectedPanel;
+            this.selectedFaceIndex = this.selectedPanelFaceIndex;
+          }
+
           if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
             const matrixWorld = this.selected.parent != null
               ? this.selected.parent.matrixWorld
@@ -164,54 +193,54 @@ export default {
             this.offset.copy(this.intersection).sub(this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
           }
 
-          if (this.selected.isDimension) {
-            this.$emit('dragstart', this.selected, this.selectedFaceIndex);
-            this.domElement.style.cursor = 'move';
-          } else if (this.selected.isCoordinate) {
-            this.$emit('dragstart', this.selected, this.selectedFaceIndex);
-            this.domElement.style.cursor = 'move';
-          } else if (this.selectedObject !== this.selected) {
-            this.selectedObject = this.selected;
-            this.$emit('dragstart', this.selected, this.selectedFaceIndex);
-            this.selected = null;
-          } else {
-            this.$emit('dragstart', this.selected, this.selectedFaceIndex);
+          this.$emit('dragstart', this.selected, this.selectedFaceIndex);
 
-            if (this.enableMoving) {
-              this.domElement.style.cursor = 'move';
-            } else {
-              this.selected = null;
-            }
+          if (this.selected.isDimension) {
+            this.domElement.style.cursor = 'move';
+            this.isDragging = true;
+            this.$emit('hoveron');
+          } else if (this.selected.isCoordinate) {
+            this.domElement.style.cursor = 'move';
+            this.isDragging = true;
+            this.$emit('hoveron');
+          } else if (this.selectedObject !== this.selected) {
+            this.$store.commit('Panels/enableMoving', false);
+            this.$store.commit('Panels/enableResizing', false);
+            this.selectedObject = this.selected;
+            this.selected = null;
+          } else if (this.enableMoving) {
+            this.domElement.style.cursor = 'move';
+            this.isDragging = true;
+            this.$emit('hoveron');
+          } else {
+            this.selected = null;
           }
         } else {
-          if (this.prevMouse.x === event.clientX && this.prevMouse.y === event.clientY) {
-            this.$store.commit('Camera/selectObject3D');
-          }
+          this.$store.commit('Camera/selectObject3D');
 
           this.selectedObject = null;
           this.selected = null;
         }
       }
     },
-    onDocumentMouseCancel(event) {
+    onDocumentRightMouseClick(event) {
       event.preventDefault();
-      // if (this.selected) {
-      //   this.$emit('dragend', this.selected);
-      //   this.selected = null;
-      // }
-      // this.domElement.style.cursor = this.hovered ? 'pointer' : 'auto';
+
+      if (this.selected) {
+        this.$emit('dragcancel', this.selected);
+        this.$emit('hoveroff');
+        this.selected = null;
+      }
+      this.isDragging = false;
+
+      this.domElement.style.cursor = this.hoveredObject ? 'pointer' : 'auto';
     },
     onDocumentTouchMove(event) {
       event.preventDefault();
       // eslint-disable-next-line no-param-reassign
       [event] = event.changedTouches;
 
-      const rect = this.domElement.getBoundingClientRect();
-
-      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.mouse, this.cameraInst);
+      this.setRaycaster(event);
 
       if (this.selected && this.enable && this.enableMoving) {
         if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
@@ -234,13 +263,7 @@ export default {
       // eslint-disable-next-line no-param-reassign
       [event] = event.changedTouches;
 
-      const rect = this.domElement.getBoundingClientRect();
-
-      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.mouse, this.cameraInst);
-
+      this.setRaycaster(event);
       const intersects = this.raycaster.intersectObjects(this.objects, true);
 
       if (intersects.length > 0) {
@@ -261,11 +284,20 @@ export default {
     },
     onDocumentTouchEnd(event) {
       event.preventDefault();
+
       if (this.selected) {
         this.$emit('dragend', this.selected);
         this.selected = null;
       }
+
       this.domElement.style.cursor = 'auto';
+    },
+    onDocumentKeyDown(event) {
+      event.preventDefault();
+
+      if (this.selected && event.code === 'Escape') {
+        this.onDocumentRightMouseClick(event);
+      }
     },
   },
   watch: {

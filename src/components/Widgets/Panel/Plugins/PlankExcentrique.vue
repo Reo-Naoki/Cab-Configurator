@@ -1,12 +1,29 @@
 <template>
   <div>
     <div v-for="(c, index) in connectionsWherePanelIsP2" :key="`${plankID}_excentrique_${c.p1}_${c.p2}_key_${index}`">
-      <vgl-box-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry`" v-bind="textureDimension(c)"/>
-      <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry`"
-                :material="texture(c)"
-                :position="getFixedOrigin(c)"
-                :name="`${plankID}_excentrique_${c.p1}_${c.p2}`">
+      <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_left`" v-bind="screwDimension()"/>
+      <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_left`"
+                material="excentrique"
+                :position="getFixedOrigin(c, -1)"
+                :rotation="getFixedRotation(c)"
+                :name="`${plankID}_excentrique_${c.p1}_${c.p2}_left`">
       </vgl-mesh>
+      <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_right`" v-bind="screwDimension()"/>
+      <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_right`"
+                material="excentrique"
+                :position="getFixedOrigin(c, 1)"
+                :rotation="getFixedRotation(c)"
+                :name="`${plankID}_excentrique_${c.p1}_${c.p2}_right`">
+      </vgl-mesh>
+      <div v-if="c.ilength >= 6000">
+        <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_middle`" v-bind="screwDimension()"/>
+        <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_middle`"
+                  material="excentrique"
+                  :position="getFixedOrigin(c, 0)"
+                  :rotation="getFixedRotation(c)"
+                  :name="`${plankID}_excentrique_${c.p1}_${c.p2}_middle`">
+        </vgl-mesh>
+      </div>
     </div>
   </div>
 </template>
@@ -40,9 +57,11 @@ export default {
   },
   data() {
     return {
-      textureSpacing: 10, // space between the plank and the texture (avoid colliding geometry
-      textureMargin: 180, // margin of the texture
-      textureSize: 500,
+      screwHeaderHeight: 10, // space between the plank and the texture (avoid colliding geometry
+      screwSpacing: 250,
+      screwMargin: 500,
+      screwDiameter: 150,
+      radialSegments: 20,
     };
   },
   computed: {
@@ -51,149 +70,121 @@ export default {
     },
   },
   methods: {
-    texture(connection) {
-      const { center } = connection;
-      const { plankPosition: { y: py, z: pz }, plankDimension: { depth, height } } = this;
-      switch (this.plankType) {
-        case 'FP':
-          if (this.almostEqual(center.z, pz) || this.almostEqual(center.z, pz + depth)) { // Connect along x axis = with VP
-            return 'excentrique';
-          }
-          return 'excentrique2';
-        case 'VP':
-          if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // Connect along x axis = with
-            return 'excentrique';
-          }
-          return 'excentrique2';
-        case 'VDP':
-        default:
-          if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // Connect with VP
-            return 'excentrique';
-          }
-          return 'excentrique2';
-      }
-    },
     almostEqual(v1, v2) { // true if interval between 2 values is less than 100 (=10mm)
       return (Math.abs(v2 - v1) < 100);
     },
-    getOriginByP1(connection) {
+    getFixedOrigin(connection, index = 0) {
+      const { x, y, z } = this.getOriginByP1(connection, index);
+      return `${x} ${y} ${z}`;
+    },
+    getOriginByP1(connection, index) {
       const { p2side, center, ilength } = connection;
       const { plankPosition: { x: px, y: py, z: pz }, plankDimension: { width, depth, height } } = this;
+
       switch (this.plankType) {
         case 'FP': // Ok
           if (this.almostEqual(center.z, pz) || this.almostEqual(center.z, pz + depth)) { // Connect along x axis = with VP
             return {
-              x: center.x - Math.floor(ilength / 2),
-              y: p2side === 1 ? py + height + this.textureSpacing : py - this.textureSpacing,
-              z: center.z > pz ? pz + depth - this.textureSize : pz,
+              x: center.x + (ilength / 2 - this.screwMargin) * index,
+              y: p2side === 1 ? py + height + this.screwHeaderHeight : py - this.screwHeaderHeight,
+              z: center.z > pz ? pz + depth - this.screwSpacing : pz + this.screwSpacing,
             };
           }
           return { // Connect along z axis = with VDP
-            x: center.x > px ? px + width - this.textureSize : px,
-            y: p2side === 1 ? py + height + this.textureSpacing : py - this.textureSpacing,
-            z: center.z - Math.floor(ilength / 2), //  ? pz : center.z - this.textureSize,
+            x: center.x > px ? px + width - this.screwSpacing : px + this.screwSpacing,
+            y: p2side === 1 ? py + height + this.screwHeaderHeight : py - this.screwHeaderHeight,
+            z: center.z + (ilength / 2 - this.screwMargin) * index,
           };
         case 'VP': // Not done
           if (this.almostEqual(center.x, px) || this.almostEqual(center.x, px + width)) { // Connect with VDP
             return {
-              x: center.x <= px ? px : px + width - this.textureSize,
-              y: center.y - Math.floor(ilength / 2),
-              z: p2side === 1 ? pz - this.textureSpacing : pz + depth + this.textureSpacing,
+              x: center.x <= px ? px + this.screwSpacing : px + width - this.screwSpacing,
+              y: center.y + (ilength / 2 - this.screwMargin) * index,
+              z: p2side === 1 ? pz - this.screwHeaderHeight : pz + depth + this.screwHeaderHeight,
             };
           }
           return { // Connect with FP
-            x: center.x - Math.floor(ilength / 2),
-            y: center.y > py ? py + height - this.textureSize : py,
-            z: p2side === 1 ? pz - this.textureSpacing : pz + depth + this.textureSpacing,
+            x: center.x + (ilength / 2 - this.screwMargin) * index,
+            y: center.y > py ? py + height - this.screwSpacing : py + this.screwSpacing,
+            z: p2side === 1 ? pz - this.screwHeaderHeight : pz + depth + this.screwHeaderHeight,
           };
         case 'VDP': // Tested Ok
         default:
           if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // Connect with VP
             return {
-              x: p2side === 1 ? px + width + this.textureSpacing : px - this.textureSpacing,
-              y: center.y > py ? center.y - this.textureSize : py,
-              z: center.z - Math.floor(ilength / 2),
+              x: p2side === 1 ? px + width + this.screwHeaderHeight : px - this.screwHeaderHeight,
+              y: center.y > py ? center.y - this.screwSpacing : py + this.screwSpacing,
+              z: center.z + (ilength / 2 - this.screwMargin) * index,
             };
           }
           return {
-            x: p2side === 1 ? px + width + this.textureSpacing : px - this.textureSpacing,
-            y: center.y - Math.floor(ilength / 2),
-            z: center.z > pz ? pz + depth - this.textureSize : pz,
+            x: p2side === 1 ? px + width + this.screwHeaderHeight : px - this.screwHeaderHeight,
+            y: center.y + (ilength / 2 - this.screwMargin) * index,
+            z: center.z > pz ? pz + depth - this.screwSpacing : pz + this.screwSpacing,
           };
       }
     },
-    getFixedOrigin(connection) {
-      const { width, depth, height } = this.textureDimension(connection);
-      const { x, y, z } = this.getOriginByP1(connection);
-      return `${x + width / 2} ${y + height / 2} ${z + depth / 2}`;
+    getFixedRotation(connection) {
+      const { x, y, z } = this.getRotationByP1(connection);
+      return `${x} ${y} ${z}`;
     },
-    textureDimension(connection) {
-      /*
-      // plutot que de faire au cas par cas selon le type
-      // il y a un moyen plus simple pour que le sticker aie la meme 'orientation' que la planche
-      // il suffit de trouver la propriété (width, depth ou height) qui correspond à la thickness
-      // pour cela on cherche la plus petite valeur dans les dimensions de la planche
-      const dimension = this.plankDimension;
-      // looking for the smallest value (with the matching key) in the dimensions data
-      const entry = Object.entries(dimension).reduce(
-        ([resultKey, smallestValue], [key, value]) => (smallestValue > value ? [key, value] : [resultKey, smallestValue]),
-        ['width', dimension.width],
-      );
-      const entryAsObject = { [entry[0]]: 1 };
-      return {
-        width: this.textureSize,
-        height: this.textureSize,
-        depth: this.textureSize,
-        ...entryAsObject, // will override the key/value with the smallest value
-      };
-*/
-      // const dimension = this.plankDimension;
-      const { center, ilength } = connection;
-      // eslint-disable-next-line no-unused-vars
+    getRotationByP1(connection) {
+      const { p2side, center } = connection;
       const { plankPosition: { x: px, y: py, z: pz }, plankDimension: { width, depth, height } } = this;
+
       switch (this.plankType) {
-        case 'FP':
+        case 'FP': // Ok
           if (this.almostEqual(center.z, pz) || this.almostEqual(center.z, pz + depth)) { // Connect along x axis = with VP
             return {
-              width: ilength,
-              height: 1,
-              depth: this.textureSize,
+              x: 0,
+              y: (pz < center.z ? Math.PI * 1.5 : Math.PI * 0.5) + (p2side === 1 ? 0 : Math.PI),
+              z: 0,
             };
           }
+          // Connect along z axis = with VDP
           return {
-            width: this.textureSize,
-            height: 1,
-            depth: ilength,
+            x: 0,
+            y: (px < center.x ? 0 : Math.PI) + (p2side === 1 ? 0 : Math.PI),
+            z: 0,
           };
-
-        case 'VP':
+        case 'VP': // Not done
           if (this.almostEqual(center.x, px) || this.almostEqual(center.x, px + width)) { // Connect with VDP
             return {
-              width: this.textureSize,
-              height: ilength,
-              depth: 1,
+              x: Math.PI * 0.5,
+              y: (px < center.x ? 0 : Math.PI) + (p2side === 1 ? Math.PI : 0),
+              z: 0,
             };
           }
-          return { // Connect with FP
-            width: ilength,
-            height: this.textureSize,
-            depth: 1,
-          };
-        case 'VDP':
-        default:
-          if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // connect with VP
-            return {
-              width: 1,
-              height: this.textureSize,
-              depth: connection.ilength,
-            };
-          }
+          // Connect with FP
           return {
-            width: 1,
-            height: connection.ilength,
-            depth: this.textureSize,
+            x: Math.PI * 0.5,
+            y: (py < center.y ? Math.PI * 0.5 : Math.PI * 1.5) + (p2side === 1 ? Math.PI : 0),
+            z: 0,
+          };
+        case 'VDP': // Tested Ok
+        default:
+          if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // Connect with FP
+            return {
+              x: (py < center.y ? 0 : Math.PI) + (p2side === 1 ? Math.PI : 0),
+              y: 0,
+              z: Math.PI * 0.5,
+            };
+          }
+          // Connect with VP
+          return {
+            x: (pz < center.z ? Math.PI * 1.5 : Math.PI * 0.5) + (p2side === 1 ? 0 : Math.PI),
+            y: 0,
+            z: Math.PI * 0.5,
           };
       }
+    },
+    screwDimension() {
+      return {
+        radiusTop: this.screwDiameter * 0.5,
+        radiusBottom: this.screwDiameter * 0.5,
+        height: 1,
+        radialSegments: this.radialSegments,
+      };
     },
   },
 };

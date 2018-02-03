@@ -1,8 +1,11 @@
 <template>
-  <component ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate"/>
+  <vgl-group>
+    <component ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate"/>
+  </vgl-group>
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import VerticalPanel from './Meshes/VP/VerticalPanel';
 import AdjustableShelf from './Meshes/FP/AdjustableShelf';
 import FlatPanel from './Meshes/FP/FlatPanel';
@@ -23,14 +26,61 @@ export default {
     HDFPanel,
     DoorPanel,
   },
-  props: ['index', 'connections', 'ptype', 'thick', 'points'],
+  data() {
+    return {
+      prevType: null,
+    };
+  },
+  inject: ['vglNamespace'],
+  props: ['id', 'index', 'ptype', 'x', 'y', 'thick', 'pos', 'points'],
   computed: {
+    ...mapState('Panels', [
+      'connections',
+    ]),
+    relatedConnections() {
+      return this.connections.filter(c => c.containsPanel(this.id));
+    },
     component() {
-      const connections = this.connections || [];
+      const connections = this.relatedConnections || [];
+      const doorPanelData = DoorPanel.data();
+      const panelPos = this.pos;
+
       switch (this.ptype) {
         case 'VP':
-          if (this.thick < 18 || connections.some(c => c.type === 'hdfgrove')) return 'HDFPanel';
-          if (connections.some(c => c.type === 'hinged')) return 'DoorPanel';
+          if (this.thick < 18 || connections.some(c => c.type === 'hdfgrove')) {
+            if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
+              panelPos[1] -= doorPanelData.dimensionsMarginLeft / 10;
+              panelPos[2] -= doorPanelData.dimensionsMarginBottom / 10;
+              this.syncHandler('x', this.x + doorPanelData.dimensionsMarginLeft / 10 + doorPanelData.dimensionsMarginRight / 10);
+              this.syncHandler('y', this.y + doorPanelData.dimensionsMarginTop / 10 + doorPanelData.dimensionsMarginBottom / 10);
+              this.syncHandler('pos', panelPos);
+            }
+            this.setPrevType('HDFPanel');
+
+            return 'HDFPanel';
+          }
+          if (connections.some(c => c.type === 'hinged')) {
+            if (this.prevType !== null && this.prevType !== 'DoorPanel') { // Convert VerticalPanel into DoorPanel(Set magnetic panel dimension with VP dimension)
+              panelPos[1] += doorPanelData.dimensionsMarginLeft / 10;
+              panelPos[2] += doorPanelData.dimensionsMarginBottom / 10;
+              this.syncHandler('x', this.x - doorPanelData.dimensionsMarginLeft / 10 - doorPanelData.dimensionsMarginRight / 10);
+              this.syncHandler('y', this.y - doorPanelData.dimensionsMarginTop / 10 - doorPanelData.dimensionsMarginBottom / 10);
+              this.syncHandler('pos', panelPos);
+            }
+            this.setPrevType('DoorPanel');
+
+            return 'DoorPanel';
+          }
+
+          if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
+            panelPos[1] -= doorPanelData.dimensionsMarginLeft / 10;
+            panelPos[2] -= doorPanelData.dimensionsMarginBottom / 10;
+            this.syncHandler('x', this.x + doorPanelData.dimensionsMarginLeft / 10 + doorPanelData.dimensionsMarginRight / 10);
+            this.syncHandler('y', this.y + doorPanelData.dimensionsMarginTop / 10 + doorPanelData.dimensionsMarginBottom / 10);
+            this.syncHandler('pos', panelPos);
+          }
+          this.setPrevType('VerticalPanel');
+
           return 'VerticalPanel';
         case 'FP':
           if (connections.some(c => c.type === 'holeline32')) return 'AdjustableShelf';
@@ -53,6 +103,9 @@ export default {
     },
   },
   methods: {
+    setPrevType(data) {
+      this.prevType = data;
+    },
     syncHandler(key, data) {
       // update key of panel
       this.$store.commit('Panels/setPanelData', { index: this.index, key, data });

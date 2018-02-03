@@ -1,11 +1,11 @@
 <template>
   <vgl-group>
-    <vgl-sphere-geometry name="vertex-geometry" :radius="140"></vgl-sphere-geometry>
-    <vgl-mesh ref="vertices" geometry="vertex-geometry"
-              v-for="(vertex, index) in vertices"
-              :key="`${vertex.name}(${index})`"
-              v-bind="vertex">
-    </vgl-mesh>
+    <div v-for="(vertex, index) in vertices" :key="`${vertex.name}(${index})`">
+      <vgl-sphere-geometry :name="`${vertex.name}vertex-geometry${index}`" :radius="vertex.visible ? sizeByDistanceToCamera(vertex.position) : 0"></vgl-sphere-geometry>
+      <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry${index}`"
+                v-bind="vertex">
+      </vgl-mesh>
+    </div>
   </vgl-group>
 </template>
 
@@ -66,8 +66,8 @@ export default {
         // MiddleFrontRight : false
         // MiddleBackRight  : false
       },
-      nearRange: 5000,
-      magnetRange: 38,
+      nearRange: 200,
+      magnetRange: 50,
     };
   },
   computed: {
@@ -174,13 +174,17 @@ export default {
       return Object.values(others)
         .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
         .flatMap(c => c.$refs.vertices.$refs.vertices) // flatMap and get a list of every vgl-mesh vertex components
-        .map(c => c.inst) // get only ThreeJS instance of those component
+        .map(c => (c ? c.inst : {})) // get only ThreeJS instance of those component
         .filter(inst => inst.visible); // get only visible vertices
+    },
+    sizeByDistanceToCamera(vertexPosition) {
+      const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
+      const p = new Vector3(x, y, z);
+      return p.distanceTo(this.cameraInst.position) / 120;
     },
     projectVectorTo2D(x, y, z) {
       const p = new Vector3(x, y, z);
       const vector = p.project(this.cameraInst);
-
       vector.x = (vector.x + 1) / 2 * this.domElement.width;
       vector.y = -(vector.y - 1) / 2 * this.domElement.height;
 
@@ -202,6 +206,26 @@ export default {
     setAllVerticesVisible() {
       this.vertices.forEach((v) => {
         Vue.set(this.showVertices, v.side, true);
+      });
+    },
+    setNearestVerticeVisible(hoveredObject3D, mouse = null) {
+      this.resetVerticesVisibility();
+
+      if (hoveredObject3D == null) return;
+
+      let nearestRange = mouse ? this.nearRange : 1000;
+
+      this.vertices.forEach((v) => {
+        const [x, y, z] = v.position.split(' ').map(pos => parseInt(pos, 10));
+        const distance = mouse
+          ? mouse.distanceTo(this.projectVectorTo2D(x, y, z))
+          : this.plankPosition.clone().add(hoveredObject3D.pointOffset.clone()).distanceTo(new Vector3(x, y, z));
+
+        if (distance < nearestRange) {
+          this.resetVerticesVisibility();
+          nearestRange = distance;
+          Vue.set(this.showVertices, v.side, true);
+        }
       });
     },
     resetAllVerticesVisibility() {
@@ -428,6 +452,7 @@ export default {
       // get position of active vertex as Vector3 object
       const [ax, ay, az] = position.split(' ').map(v => parseInt(v, 10));
       const vertexVector = new Vector3(ax, ay, az);
+      const vertexVector2D = this.projectVectorTo2D(vertexVector.x, vertexVector.y, vertexVector.z);
 
       // get the name of magnetizable vertices
       const magnetizableVertices = this.magnetizableVertices(side, plankType, direction);
@@ -438,7 +463,8 @@ export default {
       this.vertices.forEach(({ side: currentSide, position: currentPosition }) => {
         const [x, y, z] = currentPosition.split(' ').map(v => parseInt(v, 10));
         const current = new Vector3(x, y, z);
-        if (vertexVector.distanceTo(current) <= this.nearRange) {
+        const current2D = this.projectVectorTo2D(x, y, z);
+        if (vertexVector2D.distanceTo(current2D) <= this.nearRange) {
           // check distance between current vertex and active vertex
           if (!magnetizableVertices.includes(currentSide)) return;
           if (direction && !this.checkValidVerticesByDirection(plankType, direction, current, vertexVector)) return;
@@ -490,16 +516,16 @@ export default {
       }
       return false;
     },
-    closestVertex() {
-      const [activeVertex] = this.activeVertices;
-      if (!activeVertex) return null;
-      const activeVector = activeVertex.position.split(' ').map(v => parseInt(v, 10));
-      const { x: ax, y: ay, z: az } = this.projectVectorTo2D(...activeVector);
-      const vertexVector = new Vector3(ax, ay, az);
+    closestVertex(mouse) {
+      // const [activeVertex] = this.activeVertices;
+      // if (!activeVertex) return null;
+      // const activeVector = activeVertex.position.split(' ').map(v => parseInt(v, 10));
       return this.verticesInWorld().reduce((acc, current) => {
         const currentVector = this.projectVectorTo2D(current.position.x, current.position.y, current.position.z);
-        const currentDistance = vertexVector.distanceTo(currentVector);
-        if (acc == null) return { vertex: current, distance: currentDistance };
+        const currentDistance = mouse.distanceTo(currentVector);
+        if (acc == null && currentDistance) {
+          return currentDistance <= this.magnetRange ? { vertex: current, distance: currentDistance } : null;
+        }
         const { distance } = acc;
         return currentDistance < distance ? { vertex: current, distance: currentDistance } : acc;
       }, null);

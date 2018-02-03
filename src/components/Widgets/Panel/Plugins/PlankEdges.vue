@@ -1,4 +1,8 @@
-<template><div></div></template>
+<template>
+  <div>
+  </div>
+</template>
+
 <script>
 import { Vector3 } from 'three';
 import EventBus from '../../../EventBus/EventBus';
@@ -57,8 +61,6 @@ export default {
     this.vglNamespace.beforeRender.push(this.updateStyle);
   },
   beforeDestroy() {
-    const { vglNamespace: { beforeRender }, updateTopStyle } = this;
-    beforeRender.splice(beforeRender.indexOf(updateTopStyle), 1);
     this.changeEventHandler(false);
     this.removeElements();
   },
@@ -66,9 +68,12 @@ export default {
     projectVectorTo2D(x, y, z) {
       const p = new Vector3(x, y, z);
       const vector = p.project(this.cameraInst);
-
       vector.x = (vector.x + 1) / 2 * this.domElement.width;
       vector.y = -(vector.y - 1) / 2 * this.domElement.height;
+
+      const rect = this.domElement.getBoundingClientRect();
+      vector.x = Math.max(30, Math.min(vector.x, rect.width - 70));
+      vector.y = Math.max(30, Math.min(vector.y, rect.height - 50));
 
       return vector;
     },
@@ -87,6 +92,7 @@ export default {
       select.appendChild(option2);
       select.appendChild(option3);
       select.classList.add('plank-edge-input');
+
       return select;
     },
     updateStyle() {
@@ -275,6 +281,7 @@ export default {
       const handleLeftChange = (val => self.onChange('left', val));
       const handleRightChange = (val => self.onChange('right', val));
       const handleBaseChange = (val => self.onChange('base', val));
+
       if (bool) {
         this.topElement.addEventListener('change', handleTopChange);
         this.leftElement.addEventListener('change', handleLeftChange);

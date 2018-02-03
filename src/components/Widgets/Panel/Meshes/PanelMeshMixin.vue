@@ -7,13 +7,66 @@
                       :width-segments="2"
                       :height-segments="2"
                       :depth-segments="2"
-                      :width="dimensionsByType.width"
-                      :height="dimensionsByType.height"
-                      :depth="dimensionsByType.depth">
-    </vgl-box-geometry>
-    <component v-else :is="customGeometry" v-bind="customGeometryBinding"/>
+                      :width="dimensionsByType.width - (isDoorPanel ? this.dimensionsMarginLeft + this.dimensionsMarginRight : 0)"
+                      :height="dimensionsByType.height - (isDoorPanel ? this.dimensionsMarginTop + this.dimensionsMarginBottom : 0)"
+                      :depth="isHDFPanel ? 0.1 : dimensionsByType.depth" />
+    <component v-else :is="customGeometry" v-bind="customGeometryBinding" />
+    <vgl-mesh ref="panel"
+              :geometry="id + '_geometry'"
+              :material="materials"
+              :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
+              :name="id"
+              :visible="true" />
 
-    <vgl-mesh ref="panel" :geometry="id + '_geometry'" :material="materials" :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`" :name="id"></vgl-mesh>
+    <!-- HDFPanel -->
+    <vgl-group v-if="customGeometry == null && isHDFPanel">
+       <!-- Magnetic Panel -->
+      <vgl-box-geometry :name="id + '_boundingBox'"
+                        ref="geometry"
+                        :width-segments="1"
+                        :height-segments="1"
+                        :depth-segments="1"
+                        :width="dimensionsByType.width"
+                        :height="dimensionsByType.height"
+                        :depth="dimensionsByType.depth + 10" />
+      <vgl-mesh :geometry="id + '_boundingBox'"
+                :material="physicalPanelMaterials"
+                :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
+                :name="id + '_boundingBox'"
+                :visible="false" />
+      <!-- Physical Panel -->
+      <vgl-box-geometry :name="id + '_physicalGeometry'"
+                        :width-segments="1"
+                        :height-segments="1"
+                        :depth-segments="1"
+                        :width="dimensionsByType.width + (this.hasFeuillure.left ? this.dimensionsMarginLeft : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight : 0)"
+                        :height="dimensionsByType.height + (this.hasFeuillure.top ? this.dimensionsMarginTop : 0) + (this.hasFeuillure.bottom ? this.dimensionsMarginBottom : 0)"
+                        :depth="dimensionsByType.depth + 5" />
+      <vgl-mesh :geometry="id + '_physicalGeometry'"
+                :material="physicalPanelMaterials"
+                :position="`${fixedPosition.x - (this.hasFeuillure.left ? this.dimensionsMarginLeft / 2 : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight / 2 : 0)} `
+                            + `${fixedPosition.y - (this.hasFeuillure.bottom ? this.dimensionsMarginBottom / 2 : 0) + (this.hasFeuillure.top ? this.dimensionsMarginTop / 2 : 0)} `
+                            + `${fixedPosition.z}`"
+                :name="id + '_physicalGeometry'" />
+    </vgl-group>
+    <!-- DoorPanel -->
+    <vgl-group v-else-if="customGeometry == null && isDoorPanel">
+       <!-- Magnetic Panel -->
+      <vgl-box-geometry :name="id + '_boundingBox'"
+                        ref="geometry"
+                        :width-segments="1"
+                        :height-segments="1"
+                        :depth-segments="1"
+                        :width="dimensionsByType.width"
+                        :height="dimensionsByType.height"
+                        :depth="dimensionsByType.depth" />
+      <vgl-mesh :geometry="id + '_boundingBox'"
+                :material="physicalPanelMaterials"
+                :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
+                :name="id + '_boundingBox'"
+                :visible="false" />
+    </vgl-group>
+
     <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension="dimensionsByType" :plank-name="id" :plank-type="ptype"/>
     <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-name="id" :plank-type="ptype" v-if="showStickers"/>
     <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-i-d="id" :plank-type="ptype" :connections="relatedConnections" v-if="showConnections" />
@@ -22,8 +75,17 @@
     <PlankDimensions ref="dimensions" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" :visible="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
     <component v-if="pluginComponent" :is="pluginComponent" v-bind="pluginBinding"/>
-    <vgl-box-helper :object="id" color="#3C3C3C"/>
-    <!--<vgl-axes-helper :position="`${position.x} ${position.y} ${position.z}`" :size="2999999" :visible="isSelected"/>-->
+
+    <!-- Bounding Box for Magnetic Panel of DoorPanel -->
+    <vgl-box-helper v-if="isDoorPanel" :object="id" color="#cccccc"/>
+    <!-- Bounding Box for Magnetic Panel of HDFPanel -->
+    <vgl-box-helper v-else-if="isHDFPanel" :object="id + '_boundingBox'" color="#3C3C3C"/>
+    <!-- Bounding Box for Physical Panel -->
+    <vgl-box-helper v-else :object="id" color="#3C3C3C"/>
+
+    <!-- Bounding Box for Physical Panel of DoorPanel-->
+    <vgl-box-helper v-if="isDoorPanel" :object="id + '_boundingBox'" color="#666666"/>
+    <!-- <vgl-axes-helper :position="`${position.x} ${position.y} ${position.z}`" :size="2999999" :visible="isSelected"/> -->
   </vgl-group>
 </template>
 
@@ -87,7 +149,7 @@ export default {
     },
     ptype: {
       type: String,
-      default: 'VDP',
+      default: 'FP',
     },
   },
   data() {
@@ -110,19 +172,20 @@ export default {
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
+      'hoveredObject3D',
+      'dragging',
     ]),
-    ...mapState('Panels', [{
-      worldConnections: 'connections',
-    },
-    'enableResizing',
-    'enableMoving']),
+    ...mapState('Panels', [
+      'connections',
+      'enableResizing',
+      'enableMoving',
+    ]),
     relatedConnections() {
-      return this.worldConnections.filter(c => c.containsPanel(this.id));
+      return this.connections.filter(c => c.containsPanel(this.id));
     },
     isSelected() {
-      return this.selectedObject3D && this.selectedObject3D.object3d
-        ? this.selectedObject3D.object3d.name.split('_').includes(this.id.toString())
-        : false;
+      if (this.selectedObject3D && this.selectedObject3D.object3d) return this.selectedObject3D.object3d.name.split('_').includes(this.id.toString());
+      return false;
     },
     showStickers() {
       return this.isItemDisplayed('stickers');
@@ -188,13 +251,18 @@ export default {
     boxRotation() {
       return `${this.rotation.x} ${this.rotation.y} ${this.rotation.z}`;
     },
+    physicalPanelMaterials() {
+      const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
+      return [
+        formattedEdges[1] ? this.material.toString() : 'raw',
+        formattedEdges[3] ? this.material.toString() : 'raw',
+        formattedEdges[2] ? this.material.toString() : 'raw',
+        formattedEdges[0] ? this.material.toString() : 'raw',
+        this.isSelected ? 'selected' : this.material.toString(),
+        this.isSelected ? 'selected' : 'raw',
+      ];
+    },
     materials() {
-      // right edge
-      // left edge
-      // upper edge
-      // lower edge
-      // front
-      // back
       return [];
     },
     pluginComponent() {
@@ -205,6 +273,12 @@ export default {
     },
     customGeometry() {
       return null;
+    },
+    isHDFPanel() {
+      return false;
+    },
+    isDoorPanel() {
+      return false;
     },
     customGeometryBinding() {
       return [];
@@ -242,6 +316,7 @@ export default {
       const currentBoundingBox = new Box3();
       currentBoundingBox.setFromObject(object || object3ds[id]);
       const planks = Object.values(object3ds).filter(o => o.isPanel && o.name !== id);
+
       return planks
         .filter((mesh) => {
           const meshBB = new Box3();
@@ -253,9 +328,11 @@ export default {
       this.resetColide();
       const currentBoundingBox = new Box3();
       currentBoundingBox.setFromObject(this.vglNamespace.object3ds[this.id]);
+
       this.intersects().forEach((mesh) => {
         this.getSideCollideWithMesh(currentBoundingBox, mesh);
       });
+
       return this.collide;
     },
     getSideCollideWithMesh(currentBoundingBox, mesh) {
@@ -279,47 +356,53 @@ export default {
     },
     move(event, position, mesh, faceIndex, magnetism) {
       this.collide = false;
+
+      const mouseScreenPoint = new Vector2();
+      const rect = this.vglNamespace.renderers[0].inst.domElement.getBoundingClientRect();
+      mouseScreenPoint.x = event.clientX - rect.left;
+      mouseScreenPoint.y = event.clientY - rect.top;
+
       if (mesh.isDimension || mesh.isCoordinate) {
         this.$refs.vertices.resetAllVerticesVisibility();
         const mouse = new Vector2();
-        const rect = this.vglNamespace.renderers[0].inst.domElement.getBoundingClientRect();
-        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        mouse.x = (mouseScreenPoint.x / rect.width) * 2 - 1;
+        mouse.y = -(mouseScreenPoint.y / rect.height) * 2 + 1;
         const raycast = new Raycaster();
         raycast.setFromCamera(mouse, this.vglNamespace.cameras.camera1);
         const intersects = raycast.intersectObjects(Object.values(this.vglNamespace.object3ds), true);
         if (intersects.length > 0) {
-          const intersect = intersects[0];
-          if (!mesh.name.includes(intersect.object.name)) {
-            window.panels[parseInt(intersect.object.name, 10)].$refs.vertices.setVertexVisibilityFromFaceIndex(intersect.faceIndex);
+          let intersect = intersects[0];
+          for (let i = 0; i < intersects.length; i += 1) {
+            if (!intersects[i].object.name.includes('bubble')) {
+              intersect = intersects[i];
+              break;
+            }
+          }
+
+          if (!mesh.name.includes(intersect.object.name) && !intersect.object.name.includes('bubble')) {
+            window.panels[parseInt(intersect.object.name, 10)].$refs.vertices.setNearestVerticeVisible(intersect.object, mouseScreenPoint);
             const vertice = window.panels[parseInt(intersect.object.name, 10)].$refs.vertices.activeVertices;
             if (vertice.length > 0) {
               const posVertex = vertice[0].position.split(' ');
               const newVector = new Vector3(parseInt(posVertex[0], 10), parseInt(posVertex[1], 10), parseInt(posVertex[2], 10));
               const targetVector2D = this.toScreenPosition(parseInt(posVertex[0], 10), parseInt(posVertex[1], 10), parseInt(posVertex[2], 10));
-              if (mouse.distanceTo(targetVector2D) <= 50) {
+              if (mouse.distanceTo(targetVector2D) <= 0.08) {
                 this.resize(mesh, position, newVector, magnetism);
-              } else {
-                this.resize(mesh, position, false, magnetism);
-              }
-            } else {
-              this.resize(mesh, position, false, magnetism);
-            }
-          } else {
-            this.resize(mesh, position, false, magnetism);
-          }
-        } else {
-          this.resize(mesh, position, false, magnetism);
-        }
+              } else this.resize(mesh, position, false, magnetism);
+            } else this.resize(mesh, position, false, magnetism);
+          } else this.resize(mesh, position, false, magnetism);
+        } else this.resize(mesh, position, false, magnetism);
       } else if (mesh.isPanel) {
         this.$store.dispatch('Panels/deletePanelConnections', this.id);
         this.moving = true;
         if (magnetism) {
           /** MAGNETISM */
-          this.$refs.vertices.setVertexVisibilityFromFaceIndex(faceIndex);
+          this.$refs.vertices.setNearestVerticeVisible(this.hoveredObject3D);
           this.$refs.vertices.showNearestVertices();
-          const closestVertex = this.$refs.vertices.closestVertex();
-          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex)) return;
+          const closestVertex = this.$refs.vertices.closestVertex(mouseScreenPoint);
+          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex)) {
+            return;
+          }
         } else {
           this.$refs.vertices.resetAllVerticesVisibility();
         }
@@ -343,36 +426,31 @@ export default {
       // vector.y = Math.round((0.5 - vector.y / 2) * (this.vglNamespace.renderers[0].inst.domElement.height / window.devicePixelRatio));
       return new Vector2(vector.x, vector.y);
     },
-    projectVectorTo2D(x, y, z) {
-      const p = new Vector3(x, y, z);
-      this.vglNamespace.cameras.camera1.updateMatrixWorld();
-      // vector.x = (vector.x + 1) / 2 * this.vglNamespace.renderers[0].inst.domElement.width;
-      // vector.y = -(vector.y - 1) / 2 * this.vglNamespace.renderers[0].inst.domElement.height;
-
-      return p.project(this.vglNamespace.cameras.camera1);
-    },
     select(isSelected) {
-      const { object3d, faceIndex } = this.selectedObject3D || {};
+      const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};
       if (!object3d) {
         // nothing selected.. unselect just in case
         this.$refs.vertices.resetAllVerticesVisibility();
         this.moving = false;
       } else if (object3d.isPanel) {
         if (isSelected) {
-          this.$refs.vertices.setVertexVisibilityFromFaceIndex(faceIndex);
+          this.$refs.vertices.setNearestVerticeVisible(this.hoveredObject3D);
         } else {
-          this.$refs.vertices.resetAllVerticesVisibility();
+          this.$refs.vertices.resetVerticesVisibility();
         }
-      } else if (object3d.isDimension) {
-        this.$refs.dimensions.select(isSelected);
-      } else if (object3d.isCoordinate) {
-        this.$refs.coordinate.select(isSelected);
-      }
+      } else this.$refs.vertices.resetVerticesVisibility();
+    },
+    setDragging(isSelected) {
+      if (this.selectedObject3D.object3d.isCoordinate && isSelected) this.$refs.coordinate.select(this.selectedObject3D.object3d);
+      else if (this.selectedObject3D.object3d.isDimension && isSelected) this.$refs.dimensions.select(this.selectedObject3D.object3d);
+      else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
+      else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
     },
     updateColliding() {
       const { [this.id]: current, ...others } = window.panels;
       const currentBox = new Box3();
       currentBox.setFromObject(this.$refs.panel.inst);
+
       this.collide = Object.values(others)
         .filter(c => c != null)
         .map(c => c.$refs.panel.inst)
@@ -400,6 +478,11 @@ export default {
       }
     },
     selectedObject3D: {
+      handler() {
+        this.select(this.isSelected);
+      },
+    },
+    hoveredObject3D: {
       handler() {
         this.select(this.isSelected);
       },

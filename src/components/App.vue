@@ -4,7 +4,7 @@
     <div class="content-vgl">
       <PlankEditor />
       <div id="content-3d" class="content-3d">
-        <vgl-renderer ref="renderer" :antialias="true" style="height: 100%" precision="highp" power-preference="high-performance" :preserve-drawing-buffer="true">
+        <vgl-renderer ref="renderer" :antialias="true" style="height: 100%" precision="highp" power-preference="high-performance" :preserve-drawing-buffer="true" >
           <Materials :materials="materials" />
           <Camera />
           <vgl-scene ref="scene" backgroundColor="#f8f8ff">

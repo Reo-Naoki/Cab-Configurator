@@ -18,7 +18,7 @@
         <div class="dimension-wrapper">
           <label class="inline-block normal">Epaisseur:</label>
           <select class="dimension-select w-select" v-model.number="thick">
-            <option :value="3" v-if="panelType === 'VP'">3 mm</option>
+            <option :value="4" v-if="panelType === 'VP'">3 mm</option>
             <option :value="18">18 mm</option>
             <option :value="36" v-if="panelType !== 'VP'">36 mm</option>
           </select>

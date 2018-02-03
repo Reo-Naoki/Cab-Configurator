@@ -135,7 +135,8 @@ export default {
       return this.materialID != null ? this.materialID : this.colorToMaterial(this.getActualColor).id;
     },
     getActualColor() {
-      return this.color || this.materialIDToColor(this.materialID);
+      if (this.color || this.materialIDToColor(this.materialID)) return this.color || this.materialIDToColor(this.materialID);
+      return {};
     },
     ...mapGetters('materials', [
       'colorToMaterial',

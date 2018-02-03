@@ -5,9 +5,6 @@ export default {
   name: 'VerticalPanel',
   mixins: [PanelMeshMixin],
   computed: {
-    showEdgesSelector() {
-      return false;
-    },
     dimensionsByType: {
       get() {
         return {

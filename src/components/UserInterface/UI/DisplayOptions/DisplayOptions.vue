@@ -1,6 +1,6 @@
 <template>
   <div class="wrapper-switch">
-    <DragActivator />
+    <!-- <DragActivator /> -->
     <ColorPaletteDisplayer />
     <ConnectionsDisplayer />
     <!-- <StickerDisplayer /> -->
@@ -11,12 +11,12 @@
 import ConnectionsDisplayer from './Plugins/ConnectionsDisplayer';
 // import StickerDisplayer from './Plugins/StickerDisplayer';
 import ColorPaletteDisplayer from './Plugins/ColorPaletteDisplayer';
-import DragActivator from './Plugins/DragActivator';
+// import DragActivator from './Plugins/DragActivator';
 
 export default {
   name: 'DisplayOptions',
   components: {
-    DragActivator,
+    // DragActivator,
     ColorPaletteDisplayer,
     ConnectionsDisplayer,
     // StickerDisplayer,

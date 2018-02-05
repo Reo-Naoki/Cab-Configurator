@@ -47,7 +47,7 @@ export default {
     },
     plane: () => new Plane(),
     raycaster: () => new Raycaster(),
-    prevMouse: () => new Vector2(),
+    prevMousePos: () => new Vector2(),
     mouse: () => new Vector2(),
     offset: () => new Vector3(),
     intersection: () => new Vector3(),
@@ -98,8 +98,9 @@ export default {
     onDocumentMouseDown(event) {
       event.preventDefault();
 
-      this.prevMouse.x = event.clientX;
-      this.prevMouse.y = event.clientY;
+      // Save mouse position
+      this.prevMousePos.x = event.clientX;
+      this.prevMousePos.y = event.clientY;
       this.isDragging = true;
     },
     onDocumentMouseMove(event) {
@@ -129,7 +130,12 @@ export default {
       }
 
       if (intersects.length > 0) {
-        const { object, point } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+        const { name } = intersects[0].object;
+        const objectID = name.split('_')[0];
+        const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
+
+        const { object, point } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
+
         if (object.isPanel && this.selectedObject === object && this.enableMoving && !this.isDragging) {
           this.$emit('hovermove', object, point.clone().sub(object.position));
         } else if (!object.isVertex) {
@@ -140,7 +146,11 @@ export default {
       }
 
       if (intersects.length > 0) {
-        const { object } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+        const { name } = intersects[0].object;
+        const objectID = name.split('_')[0];
+        const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
+
+        const { object } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
 
         this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal), this.worldPosition.setFromMatrixPosition(object.matrixWorld));
 
@@ -159,7 +169,7 @@ export default {
       event.preventDefault();
       this.isDragging = false;
 
-      if (this.selected) {
+      if (this.selected) { // Object was selected and it is moving or resizing
         this.$store.commit('Panels/enableMoving', false);
         this.$store.commit('Panels/enableResizing', false);
         this.$emit('dragend', this.selected);
@@ -167,12 +177,16 @@ export default {
         this.selected = null;
 
         this.domElement.style.cursor = this.hoveredObject ? 'pointer' : 'auto';
-      } else if (this.prevMouse.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+      } else if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) { // If mouse clicked on same place
         this.raycaster.setFromCamera(this.mouse, this.cameraInst);
 
         const intersects = this.raycaster.intersectObjects(this.objects, true);
         if (intersects.length > 0) {
-          const { object, faceIndex } = (intersects[0].object.name.includes('physicalGeometry') && intersects.length > 1) ? intersects[1] : intersects[0];
+          const { name } = intersects[0].object;
+          const objectID = name.split('_')[0];
+          const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
+
+          const { object, faceIndex } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
 
           this.selected = (object.isDimension || object.isCoordinate) ? object.parent : object;
           this.selectedFaceIndex = faceIndex;

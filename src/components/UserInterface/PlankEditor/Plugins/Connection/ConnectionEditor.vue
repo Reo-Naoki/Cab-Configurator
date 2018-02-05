@@ -15,15 +15,17 @@
       </el-form-item>
       -->
       <el-form-item label="Mode de fixation">
-        <el-select v-model="newConnection.type">
-          <el-option label="Indéfini" value="undefined" disabled/>
-          <el-option label="Tourillon+excentrique" :value="undefined"/>
-          <el-option label="Pas de fixation" value="free"/>
-          <el-option label="Taquet tous les 32mm" value="holeline32"/>
-          <el-option label="Taquet 3 positions" value="adj40"/>
-          <el-option label="Feuillure pour fond 3mm" value="hdfgrove"/>
-          <el-option label="Porte" value="hinged"/>
-        </el-select>
+        <el-container>
+          <el-col :offset="3">
+            <el-row v-if="isVisible('undefined')"><el-radio v-model="newConnection.type" label="undefined" >Indéfini</el-radio></el-row>
+            <el-row v-if="isVisible(undefined)"><el-radio v-model="newConnection.type" :label="undefined">Tourillon+excentrique</el-radio></el-row>
+            <el-row v-if="isVisible('free')"><el-radio v-model="newConnection.type" label="free">Pas de fixation</el-radio></el-row>
+            <el-row v-if="isVisible('holeline32')"><el-radio v-model="newConnection.type" label="holeline32">Taquet tous les 32mm</el-radio></el-row>
+            <el-row v-if="isVisible('adj40')"><el-radio v-model="newConnection.type" label="adj40">Taquet 3 positions</el-radio></el-row>
+            <el-row v-if="isVisible('hdfgrove')"><el-radio v-model="newConnection.type" label="hdfgrove">Feuillure pour fond 3mm</el-radio></el-row>
+            <el-row v-if="isVisible('hinged')"><el-radio v-model="newConnection.type" label="hinged">Porte</el-radio></el-row>
+          </el-col>
+        </el-container>
       </el-form-item>
       <el-form-item label="Placement des excentriques">
         <el-radio v-model="newConnection.p2side" :label="1">Face 1</el-radio>
@@ -32,14 +34,14 @@
     </el-form>
     <div slot="footer">
       <el-button @click="unselect()">Annuler</el-button>
-      <el-button type="primary" @click="applyConnection()" :disabled="newConnection.isUndefinedConnection">Modifier connexion</el-button>
+      <el-button type="primary" @click="applyConnection()">Modifier connexion</el-button> <!-- :disabled="newConnection.isUndefinedConnection">Modifier connexion</el-button> -->
     </div>
   </el-dialog>
 </template>
 <script>
 import { mapState } from 'vuex';
 import {
-  Dialog, Form, FormItem, Select, Radio, Option, Button,
+  Dialog, Form, FormItem, Select, Radio, Option, Button, Container, Col, Row,
 } from 'element-ui';
 
 export default {
@@ -52,15 +54,20 @@ export default {
     [Radio.name]: Radio,
     [Option.name]: Option,
     [Button.name]: Button,
+    [Container.name]: Container,
+    [Col.name]: Col,
+    [Row.name]: Row,
   },
   data() {
     return {
       newConnection: null,
+      connectedPanelType: null,
     };
   },
   computed: {
     ...mapState('Panels', [
       'connections',
+      'panels',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
@@ -98,11 +105,35 @@ export default {
       this.unselect();
       this.$store.dispatch('Panels/updateConnection', updatedConnection);
     },
+    isVisible(value) {
+      switch (value) {
+        case 'undefined':
+          return true;
+        case undefined:
+          return this.connectedPanelType !== 'HDFPanel';
+        case 'free':
+          return true;
+        case 'holeline32':
+          return this.connectedPanelType !== 'HDFPanel';
+        case 'adj40':
+          return this.connectedPanelType !== 'HDFPanel';
+        case 'hdfgrove':
+          return this.connectedPanelType === 'HDFPanel';
+        case 'hinged':
+          return this.connectedPanelType !== 'HDFPanel';
+        default:
+          return false;
+      }
+    },
   },
   watch: {
     selectedConnection(connection) {
       if (!connection) return;
       this.newConnection = connection.clone();
+      const connectedPanels = this.panels.filter(c => (c.id === this.newConnection.p1.toString() || c.id === this.newConnection.p2.toString()));
+
+      if (connectedPanels[0].thick === 4 || connectedPanels[1].thick === 4) this.connectedPanelType = 'HDFPanel';
+      else this.connectedPanelType = 'Panel';
     },
   },
 };

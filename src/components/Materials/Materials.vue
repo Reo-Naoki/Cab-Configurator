@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-for="(material, index) in materials" :key="material.id + '(' + index + ')'">
-      <vgl-texture :src="getMaterialURL(material.ref)" :name="material.ref"/>
+      <vgl-texture v-if="material.ref" :src="getMaterialURL(material.ref)" :name="material.ref"/>
       <vgl-mesh-lambert-material :name="material.id.toString()" :map="material.ref"></vgl-mesh-lambert-material>
     </div>
 

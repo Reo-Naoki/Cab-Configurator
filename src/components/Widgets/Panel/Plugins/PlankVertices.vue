@@ -169,13 +169,13 @@ export default {
     },
   },
   methods: {
-    verticesInWorld() {
+    verticesInWorld(isOnlyVisible = true) {
       const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
       return Object.values(others)
         .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
         .flatMap(c => c.$refs.vertices.$refs.vertices) // flatMap and get a list of every vgl-mesh vertex components
         .map(c => (c ? c.inst : {})) // get only ThreeJS instance of those component
-        .filter(inst => inst.visible); // get only visible vertices
+        .filter(inst => !isOnlyVisible || inst.visible); // get only visible vertices
     },
     sizeByDistanceToCamera(vertexPosition) {
       const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
@@ -197,8 +197,13 @@ export default {
         vertices[i].inst.isVertex = true;
       }
     },
-    setVertexVisibility(name, bool) {
-      Vue.set(this.showVertices, name, bool);
+    setVertexVisibility(name, bool, plankName = null) {
+      if (plankName) this.resetVerticesVisibility();
+      if (plankName && plankName === this.plankName) {
+        Vue.set(this.showVertices, name, bool);
+      } else if (!plankName) {
+        Vue.set(this.showVertices, name, bool);
+      }
     },
     resetVerticesVisibility() {
       this.showVertices = {};
@@ -219,7 +224,7 @@ export default {
         const [x, y, z] = v.position.split(' ').map(pos => parseInt(pos, 10));
         const distance = mouse
           ? mouse.distanceTo(this.projectVectorTo2D(x, y, z))
-          : this.plankPosition.clone().add(hoveredObject3D.pointOffset.clone()).distanceTo(new Vector3(x, y, z));
+          : this.plankPosition.clone().add(hoveredObject3D.pointOffset).distanceTo(new Vector3(x, y, z));
 
         if (distance < nearestRange) {
           this.resetVerticesVisibility();
@@ -496,27 +501,50 @@ export default {
       }
       return false;
     },
-    showNearestVertices(direction = null) {
+    getNearestVerticeInWorld(mouse) {
+      this.resetVerticesVisibility();
+
+      const nearestVertex = this.verticesInWorld(false).reduce((acc, current) => {
+        const currentVector = this.projectVectorTo2D(current.position.x, current.position.y, current.position.z);
+        const currentDistance = mouse.distanceTo(currentVector);
+        if (acc == null && currentDistance) {
+          return currentDistance <= this.nearRange ? { vertex: current, distance: currentDistance } : null;
+        }
+        const { distance } = acc;
+        return currentDistance < distance ? { vertex: current, distance: currentDistance } : acc;
+      }, null);
+
+      if (nearestVertex) {
+        EventBus.$emit('vertices', nearestVertex.vertex.name.split('_')[2], true, nearestVertex.vertex.name.split('_')[0]);
+        if (nearestVertex.distance <= this.magnetRange) return nearestVertex;
+      }
+
+      return null;
+    },
+    showNearestVertices() {
       const [activeVertex] = this.activeVertices;
       if (!activeVertex) return;
-      EventBus.$emit('vertices-near', activeVertex, this.plankType, direction);
+      EventBus.$emit('vertices-near', activeVertex, this.plankType, null);
     },
     magnetize(targetVertex) {
       const { x: tx, y: ty, z: tz } = targetVertex.position;
       const targetVector = new Vector3(tx, ty, tz);
       const targetVector2D = this.projectVectorTo2D(targetVector.x, targetVector.y, targetVector.z);
       const [activeVertex] = this.activeVertices;
+
       if (!activeVertex) return false;
+
       const [ax, ay, az] = activeVertex.position.split(' ').map(v => parseInt(v, 10));
       const activeVector = new Vector3(ax, ay, az);
       const activeVector2D = this.projectVectorTo2D(activeVector.x, activeVector.y, activeVector.z);
+
       if (targetVector2D.distanceTo(activeVector2D) <= this.magnetRange) {
         this.position = this.position.clone().add(new Vector3(tx - ax, ty - ay, tz - az));
         return true;
       }
       return false;
     },
-    closestVertex(mouse) {
+    closestVisibleVertex(mouse) {
       // const [activeVertex] = this.activeVertices;
       // if (!activeVertex) return null;
       // const activeVector = activeVertex.position.split(' ').map(v => parseInt(v, 10));

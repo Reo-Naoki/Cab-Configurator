@@ -100,7 +100,21 @@ const mutations = {
     s.enableResizing = isEnable;
   },
   setConnections(s, connlist) {
-    s.connections = connlist.map(c => new Connection(c));
+    s.connections = connlist.map((c) => {
+      if (c.type === 'hinged') {
+        const p1RealConnections = s.connections.filter(connection => ((connection.p1 === c.p1 && connection.p2 !== c.p2) || (connection.p2 === c.p1 && connection.p1 !== c.p2))
+                                                                    && connection.type !== 'undefined'
+                                                                    && connection.type !== 'free');
+        const p2RealConnections = s.connections.filter(connection => ((connection.p1 === c.p2 && connection.p2 !== c.p1) || (connection.p2 === c.p2 && connection.p1 !== c.p1))
+                                                                    && connection.type !== 'undefined'
+                                                                    && connection.type !== 'free');
+        if (p1RealConnections.length > 0 && p2RealConnections.length === 0) return new Connection({ ...c, p1: c.p2, p2: c.p1 });
+        if (p2RealConnections.length > 0 && p1RealConnections.length === 0) return c;
+        return new Connection({ ...c, type: 'undefined' });
+      }
+      const index = s.connections.findIndex(connection => connection.p1 === c.p1 && connection.p2 === c.p2);
+      return (index < 0 && (s.panels[c.p1 - 1].thick === 4 || s.panels[c.p2 - 1].thick === 4) ? new Connection({ ...c, type: 'hdfgrove' }) : new Connection(c));
+    });
   },
   addConnection(s, connection) {
     Vue.set(s.connections, s.connections.length, new Connection(connection));

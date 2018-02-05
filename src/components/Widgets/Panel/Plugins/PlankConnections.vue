@@ -1,10 +1,10 @@
 <template>
   <div>
     <div v-for="(connection, index) in bubbles" :key="`${plankID}_connection_${index}`">
-      <vgl-sphere-geometry name="connection" :radius="connection.ilength < 6000 ? 400 : 250"></vgl-sphere-geometry>
+      <vgl-sphere-geometry :name="`${plankID}_bubble_${index}`" :radius="(connection.ilength >= 6000 && connection.type === undefined) ? 250 : 400"></vgl-sphere-geometry>
       <vgl-mesh v-for="(connection, index) in bubbles"
                 :key="`bubble_${plankID}_${connection.center.x}_${connection.center.y}_${connection.center.z}_${connection.type || 'default'}_${index}`"
-                geometry="connection"
+                :geometry="`${plankID}_bubble_${index}`"
                 :material="connection.material"
                 :position="`${connection.center.x} ${connection.center.y} ${connection.center.z}`"
                 :name="`bubble_${plankID}_${connection.p2}`"

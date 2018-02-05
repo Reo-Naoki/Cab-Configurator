@@ -12,7 +12,9 @@ import FlatPanel from './Meshes/FP/FlatPanel';
 import VerticalDPanel from './Meshes/VDP/VDPanel';
 import VDPwithPoints from './Meshes/VDP/VDPwithPoints';
 import HDFPanel from './Meshes/VP/HDFPanel';
-import DoorPanel from './Meshes/VP/DoorPanel';
+import FDoorPanel from './Meshes/FP/FDoorPanel';
+import VDDoorPanel from './Meshes/VDP/VDDoorPanel';
+import VDoorPanel from './Meshes/VP/VDoorPanel';
 
 export default {
   name: 'Panel',
@@ -24,7 +26,9 @@ export default {
     VerticalDPanel,
     VDPwithPoints,
     HDFPanel,
-    DoorPanel,
+    FDoorPanel,
+    VDDoorPanel,
+    VDoorPanel,
   },
   data() {
     return {
@@ -42,7 +46,7 @@ export default {
     },
     component() {
       const connections = this.relatedConnections || [];
-      const doorPanelData = DoorPanel.data();
+      const doorPanelData = VDoorPanel.data();
       const panelPos = this.pos;
 
       switch (this.ptype) {
@@ -59,7 +63,7 @@ export default {
 
             return 'HDFPanel';
           }
-          if (connections.some(c => c.type === 'hinged')) {
+          if (connections.some(c => c.type === 'hinged' && c.p1.toString() === this.id)) {
             if (this.prevType !== null && this.prevType !== 'DoorPanel') { // Convert VerticalPanel into DoorPanel(Set magnetic panel dimension with VP dimension)
               panelPos[1] += doorPanelData.dimensionsMarginLeft / 10;
               panelPos[2] += doorPanelData.dimensionsMarginBottom / 10;
@@ -69,7 +73,7 @@ export default {
             }
             this.setPrevType('DoorPanel');
 
-            return 'DoorPanel';
+            return 'VDoorPanel';
           }
 
           if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
@@ -85,9 +89,53 @@ export default {
         case 'FP':
           if (connections.some(c => c.type === 'holeline32')) return 'AdjustableShelf';
           if (connections.some(c => c.type === 'adj40')) return 'AdjustableShelf';
+          if (connections.some(c => c.type === 'hinged' && c.p1.toString() === this.id)) {
+            if (this.prevType !== null && this.prevType !== 'DoorPanel') { // Convert VerticalPanel into DoorPanel(Set magnetic panel dimension with VP dimension)
+              panelPos[0] += doorPanelData.dimensionsMarginLeft / 10;
+              panelPos[1] += doorPanelData.dimensionsMarginBottom / 10;
+              this.syncHandler('x', this.x - doorPanelData.dimensionsMarginLeft / 10 - doorPanelData.dimensionsMarginRight / 10);
+              this.syncHandler('y', this.y - doorPanelData.dimensionsMarginTop / 10 - doorPanelData.dimensionsMarginBottom / 10);
+              this.syncHandler('pos', panelPos);
+            }
+            this.setPrevType('DoorPanel');
+
+            return 'FDoorPanel';
+          }
+
+          if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
+            panelPos[0] -= doorPanelData.dimensionsMarginLeft / 10;
+            panelPos[1] -= doorPanelData.dimensionsMarginBottom / 10;
+            this.syncHandler('x', this.x + doorPanelData.dimensionsMarginLeft / 10 + doorPanelData.dimensionsMarginRight / 10);
+            this.syncHandler('y', this.y + doorPanelData.dimensionsMarginTop / 10 + doorPanelData.dimensionsMarginBottom / 10);
+            this.syncHandler('pos', panelPos);
+          }
+          this.setPrevType('FlatPanel');
+
           return 'FlatPanel';
         case 'VDP':
           if (this.points != null && this.points.length !== 0) return 'VDPwithPoints';
+          if (connections.some(c => c.type === 'hinged' && c.p1.toString() === this.id)) {
+            if (this.prevType !== null && this.prevType !== 'DoorPanel') { // Convert VerticalPanel into DoorPanel(Set magnetic panel dimension with VP dimension)
+              panelPos[0] += doorPanelData.dimensionsMarginLeft / 10;
+              panelPos[2] += doorPanelData.dimensionsMarginBottom / 10;
+              this.syncHandler('x', this.x - doorPanelData.dimensionsMarginLeft / 10 - doorPanelData.dimensionsMarginRight / 10);
+              this.syncHandler('y', this.y - doorPanelData.dimensionsMarginTop / 10 - doorPanelData.dimensionsMarginBottom / 10);
+              this.syncHandler('pos', panelPos);
+            }
+            this.setPrevType('DoorPanel');
+
+            return 'VDDoorPanel';
+          }
+
+          if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
+            panelPos[0] -= doorPanelData.dimensionsMarginLeft / 10;
+            panelPos[2] -= doorPanelData.dimensionsMarginBottom / 10;
+            this.syncHandler('x', this.x + doorPanelData.dimensionsMarginLeft / 10 + doorPanelData.dimensionsMarginRight / 10);
+            this.syncHandler('y', this.y + doorPanelData.dimensionsMarginTop / 10 + doorPanelData.dimensionsMarginBottom / 10);
+            this.syncHandler('pos', panelPos);
+          }
+          this.setPrevType('VerticalDPanel');
+
           return 'VerticalDPanel';
         default:
           return '';

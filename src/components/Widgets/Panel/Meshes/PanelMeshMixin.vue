@@ -7,9 +7,9 @@
                       :width-segments="2"
                       :height-segments="2"
                       :depth-segments="2"
-                      :width="dimensionsByType.width - (isDoorPanel ? this.dimensionsMarginLeft + this.dimensionsMarginRight : 0)"
-                      :height="dimensionsByType.height - (isDoorPanel ? this.dimensionsMarginTop + this.dimensionsMarginBottom : 0)"
-                      :depth="isHDFPanel ? 0.1 : dimensionsByType.depth" />
+                      :width="isDoorPanel ? this.realDimensionByType.width : dimensionsByType.width"
+                      :height="isDoorPanel ? this.realDimensionByType.height : dimensionsByType.height"
+                      :depth="isHDFPanel ? 0.1 : (isDoorPanel ? this.realDimensionByType.depth : dimensionsByType.depth)" />
     <component v-else :is="customGeometry" v-bind="customGeometryBinding" />
     <vgl-mesh ref="panel"
               :geometry="id + '_geometry'"
@@ -91,7 +91,7 @@
 
 <script>
 import {
-  Vector2, Vector3, Box3, Raycaster,
+  Vector2, Vector3, Box3,
 } from 'three';
 import { mapGetters, mapState } from 'vuex';
 import PlankVertices from '../Plugins/PlankVertices';
@@ -229,6 +229,7 @@ export default {
       get() { return this.$attrs.edges; },
       set(val) { this.$emit('update:edges', val); },
     },
+
     dimensionsByType() {
       return {};
     },
@@ -363,46 +364,22 @@ export default {
       mouseScreenPoint.y = event.clientY - rect.top;
 
       if (mesh.isDimension || mesh.isCoordinate) {
-        this.$refs.vertices.resetAllVerticesVisibility();
         const mouse = new Vector2();
         mouse.x = (mouseScreenPoint.x / rect.width) * 2 - 1;
         mouse.y = -(mouseScreenPoint.y / rect.height) * 2 + 1;
-        const raycast = new Raycaster();
-        raycast.setFromCamera(mouse, this.vglNamespace.cameras.camera1);
-        const intersects = raycast.intersectObjects(Object.values(this.vglNamespace.object3ds), true);
-        if (intersects.length > 0) {
-          let intersect = intersects[0];
-          for (let i = 0; i < intersects.length; i += 1) {
-            if (!intersects[i].object.name.includes('bubble')) {
-              intersect = intersects[i];
-              break;
-            }
-          }
 
-          if (!mesh.name.includes(intersect.object.name) && !intersect.object.name.includes('bubble')) {
-            window.panels[parseInt(intersect.object.name, 10)].$refs.vertices.setNearestVerticeVisible(intersect.object, mouseScreenPoint);
-            const vertice = window.panels[parseInt(intersect.object.name, 10)].$refs.vertices.activeVertices;
-            if (vertice.length > 0) {
-              const posVertex = vertice[0].position.split(' ');
-              const newVector = new Vector3(parseInt(posVertex[0], 10), parseInt(posVertex[1], 10), parseInt(posVertex[2], 10));
-              const targetVector2D = this.toScreenPosition(parseInt(posVertex[0], 10), parseInt(posVertex[1], 10), parseInt(posVertex[2], 10));
-              if (mouse.distanceTo(targetVector2D) <= 0.08) {
-                this.resize(mesh, position, newVector, magnetism);
-              } else this.resize(mesh, position, false, magnetism);
-            } else this.resize(mesh, position, false, magnetism);
-          } else this.resize(mesh, position, false, magnetism);
-        } else this.resize(mesh, position, false, magnetism);
+        const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint);
+
+        this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
       } else if (mesh.isPanel) {
         this.$store.dispatch('Panels/deletePanelConnections', this.id);
         this.moving = true;
         if (magnetism) {
           /** MAGNETISM */
-          this.$refs.vertices.setNearestVerticeVisible(this.hoveredObject3D);
           this.$refs.vertices.showNearestVertices();
-          const closestVertex = this.$refs.vertices.closestVertex(mouseScreenPoint);
-          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex)) {
-            return;
-          }
+          const closestVertex = this.$refs.vertices.closestVisibleVertex(mouseScreenPoint);
+
+          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex)) return;
         } else {
           this.$refs.vertices.resetAllVerticesVisibility();
         }
@@ -417,14 +394,6 @@ export default {
     resize(mesh, position, newVector, magnetism) {
       if (mesh.isDimension) this.$refs.dimensions.resize(mesh.name, position, newVector, magnetism);
       else this.$refs.coordinate.resize(mesh.name, position, newVector, magnetism);
-    },
-    toScreenPosition(x, y, z) {
-      const vector = new Vector3(x, y, z);
-      this.vglNamespace.cameras.camera1.updateMatrixWorld();
-      vector.project(this.vglNamespace.cameras.camera1);
-      // vector.x = Math.round((0.5 + vector.x / 2) * (this.vglNamespace.renderers[0].inst.domElement.width / window.devicePixelRatio));
-      // vector.y = Math.round((0.5 - vector.y / 2) * (this.vglNamespace.renderers[0].inst.domElement.height / window.devicePixelRatio));
-      return new Vector2(vector.x, vector.y);
     },
     select(isSelected) {
       const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};

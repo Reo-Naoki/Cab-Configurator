@@ -68,7 +68,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
   .import-form {
     height: 60vh;

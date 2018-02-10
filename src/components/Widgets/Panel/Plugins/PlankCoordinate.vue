@@ -171,13 +171,13 @@ export default {
       this.selectedArrow = direction;
 
       if (direction === 'x' || direction === '-x') {
-        const distance = Math.round(position.x - this.plankPosition.x);
+        const distance = position.x - this.plankPosition.x;
         newPosition = { x: this.plankPosition.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
       } else if (direction === 'y' || direction === '-y') {
-        const distance = Math.round(position.y - this.plankPosition.y);
+        const distance = position.y - this.plankPosition.y;
         newPosition = { x: this.plankPosition.x, y: this.plankPosition.y + distance, z: this.plankPosition.z };
       } else if (direction === 'z' || direction === '-z') {
-        const distance = Math.round(position.z - this.plankPosition.z);
+        const distance = position.z - this.plankPosition.z;
         newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + distance };
       }
 
@@ -258,7 +258,7 @@ export default {
       this.inputElement = this.createInput();
       container.appendChild(this.inputElement);
       this.containerElement = container;
-      appDiv.appendChild(container);
+      appDiv.insertBefore(container, appDiv.firstChild);
     },
     removeElements() {
       const appDiv = document.getElementById('content-3d');
@@ -297,13 +297,12 @@ export default {
         this.inputElement.addEventListener('keyup', this.onKeyUp);
       } else {
         this.inputElement.removeEventListener('keydown', this.onKeyDown);
-        this.inputElement.addEventListener('keyup', this.onKeyUp);
+        this.inputElement.removeEventListener('keyup', this.onKeyUp);
       }
     },
   },
 };
 </script>
-
 <style>
   .plank-coordinate-input {
     position: absolute;

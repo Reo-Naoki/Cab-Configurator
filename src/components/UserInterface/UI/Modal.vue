@@ -41,7 +41,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
   .image-modal {
     position: fixed; /* Stay in place */

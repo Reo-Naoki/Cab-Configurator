@@ -8,7 +8,6 @@
       />
     </vgl-group>
     <drag-controls camera="camera1"
-                   :enable="enableDragControls"
                    :enable-moving="enableMoving"
                    :enable-resizing="enableResizing"
                    @hoveron="handleOverOn"
@@ -35,7 +34,6 @@ export default {
   computed: {
     ...mapState('Panels', [
       'panels',
-      'enableDragControls',
       'enableMoving',
       'enableResizing',
       'prevPosition',
@@ -101,6 +99,7 @@ export default {
         if (!window.panels[id]) return;
         window.panels[id].setDragging(false);
       }
+      this.$refs.connections.setConnections();
       EventBus.$emit('save');
     },
     handleDragCancel(object3d) {
@@ -145,25 +144,11 @@ export default {
       }
     },
     setStoreWatcher() {
-      const self = this;
-      this.panelsMutationWatcher = this.$store.subscribe((mutation) => {
-        if (mutation.type === 'Panels/setPanelData') {
-          const { key } = mutation.payload;
-          if (['pos', 'x', 'y', 'thick', 'ptype'].includes(key)) {
-            // props that can create colliding effect when mutated
-            Object.values(window.panels).forEach(p => p.updateColliding());
-            self.$refs.connections.setConnections();
-          }
-        } else if (mutation.type === 'Panels/updateConnection') {
-          Object.values(window.panels).forEach(p => p.updateColliding());
-        }
-      });
       this.panelsActionWatcher = this.$store.subscribeAction({
         after: (action) => {
           if (action.type === 'Panels/deserialize') {
             // deserialize handler
             Object.values(window.panels).forEach(p => p.updateColliding());
-            self.$refs.connections.setConnections();
           }
         },
       });
@@ -171,7 +156,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

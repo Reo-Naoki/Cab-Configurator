@@ -134,6 +134,8 @@ export default {
         const objectID = name.split('_')[0];
         const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
 
+        if (!intersectObj && intersects.length <= 1) return;
+
         const { object, point } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
 
         if (object.isPanel && this.selectedObject === object && this.enableMoving && !this.isDragging) {
@@ -149,6 +151,8 @@ export default {
         const { name } = intersects[0].object;
         const objectID = name.split('_')[0];
         const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
+
+        if (!intersectObj && intersects.length <= 1) return;
 
         const { object } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
 
@@ -185,6 +189,8 @@ export default {
           const { name } = intersects[0].object;
           const objectID = name.split('_')[0];
           const intersectObj = (name.includes('physicalGeometry')) ? intersects.find(c => c.object.name === objectID) : intersects[0];
+
+          if (!intersectObj) return;
 
           const { object, faceIndex } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
 

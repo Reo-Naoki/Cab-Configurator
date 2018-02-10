@@ -1,4 +1,5 @@
 <script>
+import { mapState } from 'vuex';
 import { Vector3 } from 'three';
 import FlatPanel from './FlatPanel';
 import AdjustableHoles from '../../Plugins/AdjustableHoles';
@@ -9,18 +10,15 @@ export default {
     AdjustableHoles,
   },
   mixins: [FlatPanel],
-  props: {
-    connections: {
-      type: Array,
-      required: true,
-    },
-  },
   data() {
     return {
       margin: 5,
     };
   },
   computed: {
+    ...mapState('Panels', [
+      'connections',
+    ]),
     pluginComponent() {
       return 'AdjustableHoles';
     },
@@ -60,7 +58,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

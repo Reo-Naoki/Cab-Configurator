@@ -1,5 +1,6 @@
 import Vue from 'vue';
-import DTMAPI from '../../api/dajax';
+import { MessageBox } from 'element-ui';
+import callDajax from '../../api/dajax';
 
 const state = {
   isLogged: false,
@@ -46,7 +47,15 @@ const actions = {
   getProjectsFromServer(context) {
     context.dispatch('setProjects'); // empty projects list
     if (!context.state.isLogged) return;
-    DTMAPI('getprojectslist'); // post message to parent
+    callDajax('getprojectslist')
+      .then(({ serverresult /* ,userid */ }) => context.dispatch('User/setProjects', serverresult.projects || []))
+      .catch(() => {
+        MessageBox.alert('Le serveur n\'a pas pu récupérer la liste de vos projets, contactez nous si le problème persiste.', {
+          type: 'error',
+          title: 'Erreur',
+          confirmButtonText: 'Ok',
+        });
+      });
   },
 };
 

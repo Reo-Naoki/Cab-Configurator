@@ -53,7 +53,7 @@
 </template>
 
 <script>
-import { Icon, Link } from 'element-ui';
+import { Icon, Link, MessageBox } from 'element-ui';
 import { mapActions, mapState } from 'vuex';
 import EventBus from '../../../EventBus/EventBus';
 import ProjectsBox from './Plugins/ProjectsBox';
@@ -82,7 +82,14 @@ export default {
       'addToCart',
     ]),
     updatePrice() {
-      this.$store.dispatch('Panels/requestGeneralData');
+      this.$store.dispatch('Panels/requestGeneralData').catch(() => {
+        console.error('requestGeneralData failed to return price');
+        MessageBox.alert('Le serveur n\'a pas pu calculer le prix, contactez nous si le problème persiste.', {
+          type: 'error',
+          title: 'Erreur',
+          confirmButtonText: 'Ok',
+        });
+      });
     },
     saveProject() {
       EventBus.$emit('showProjectsList');
@@ -96,7 +103,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

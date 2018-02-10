@@ -199,11 +199,7 @@ export default {
     },
     setVertexVisibility(name, bool, plankName = null) {
       if (plankName) this.resetVerticesVisibility();
-      if (plankName && plankName === this.plankName) {
-        Vue.set(this.showVertices, name, bool);
-      } else if (!plankName) {
-        Vue.set(this.showVertices, name, bool);
-      }
+      if ((plankName && plankName === this.plankName) || !plankName) Vue.set(this.showVertices, name, bool);
     },
     resetVerticesVisibility() {
       this.showVertices = {};
@@ -447,7 +443,7 @@ export default {
       // if (direction) return this.magnetismRulesDirection({ side, type }, this.plankType, direction);
       return this.magnetismRules({ side, type }, this.plankType);
     },
-    handlerVerticesNear(activeVertex, plankType, direction) {
+    handlerVerticesNear(activeVertex, plankType, direction, mouse) {
       const { side, name, position } = activeVertex;
 
       // forbid the active vertex to trigger it's own plank vertices
@@ -457,7 +453,6 @@ export default {
       // get position of active vertex as Vector3 object
       const [ax, ay, az] = position.split(' ').map(v => parseInt(v, 10));
       const vertexVector = new Vector3(ax, ay, az);
-      const vertexVector2D = this.projectVectorTo2D(vertexVector.x, vertexVector.y, vertexVector.z);
 
       // get the name of magnetizable vertices
       const magnetizableVertices = this.magnetizableVertices(side, plankType, direction);
@@ -469,7 +464,7 @@ export default {
         const [x, y, z] = currentPosition.split(' ').map(v => parseInt(v, 10));
         const current = new Vector3(x, y, z);
         const current2D = this.projectVectorTo2D(x, y, z);
-        if (vertexVector2D.distanceTo(current2D) <= this.nearRange) {
+        if (mouse.distanceTo(current2D) <= this.nearRange) {
           // check distance between current vertex and active vertex
           if (!magnetizableVertices.includes(currentSide)) return;
           if (direction && !this.checkValidVerticesByDirection(plankType, direction, current, vertexVector)) return;
@@ -521,12 +516,12 @@ export default {
 
       return null;
     },
-    showNearestVertices() {
+    showNearestVertices(mouse) {
       const [activeVertex] = this.activeVertices;
       if (!activeVertex) return;
-      EventBus.$emit('vertices-near', activeVertex, this.plankType, null);
+      EventBus.$emit('vertices-near', activeVertex, this.plankType, null, mouse);
     },
-    magnetize(targetVertex) {
+    magnetize(targetVertex, mouse) {
       const { x: tx, y: ty, z: tz } = targetVertex.position;
       const targetVector = new Vector3(tx, ty, tz);
       const targetVector2D = this.projectVectorTo2D(targetVector.x, targetVector.y, targetVector.z);
@@ -534,11 +529,9 @@ export default {
 
       if (!activeVertex) return false;
 
-      const [ax, ay, az] = activeVertex.position.split(' ').map(v => parseInt(v, 10));
-      const activeVector = new Vector3(ax, ay, az);
-      const activeVector2D = this.projectVectorTo2D(activeVector.x, activeVector.y, activeVector.z);
+      const [ax, ay, az] = activeVertex.position.split(' ').map(v => parseFloat(v, 10));
 
-      if (targetVector2D.distanceTo(activeVector2D) <= this.magnetRange) {
+      if (mouse.distanceTo(targetVector2D) <= this.magnetRange) {
         this.position = this.position.clone().add(new Vector3(tx - ax, ty - ay, tz - az));
         return true;
       }
@@ -561,7 +554,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

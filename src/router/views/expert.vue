@@ -45,7 +45,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
   .wrapper {
     height: 100vh;

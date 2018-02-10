@@ -22,13 +22,12 @@
     <vgl-group v-if="customGeometry == null && isHDFPanel">
        <!-- Magnetic Panel -->
       <vgl-box-geometry :name="id + '_boundingBox'"
-                        ref="geometry"
                         :width-segments="1"
                         :height-segments="1"
                         :depth-segments="1"
                         :width="dimensionsByType.width"
                         :height="dimensionsByType.height"
-                        :depth="dimensionsByType.depth + 10" />
+                        :depth="dimensionsByType.depth + 5" />
       <vgl-mesh :geometry="id + '_boundingBox'"
                 :material="physicalPanelMaterials"
                 :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
@@ -53,14 +52,14 @@
     <vgl-group v-else-if="customGeometry == null && isDoorPanel">
        <!-- Magnetic Panel -->
       <vgl-box-geometry :name="id + '_boundingBox'"
-                        ref="geometry"
                         :width-segments="1"
                         :height-segments="1"
                         :depth-segments="1"
                         :width="dimensionsByType.width"
                         :height="dimensionsByType.height"
                         :depth="dimensionsByType.depth" />
-      <vgl-mesh :geometry="id + '_boundingBox'"
+      <vgl-mesh ref="magneticBoundingBox"
+                :geometry="id + '_boundingBox'"
                 :material="physicalPanelMaterials"
                 :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
                 :name="id + '_boundingBox'"
@@ -85,7 +84,6 @@
 
     <!-- Bounding Box for Physical Panel of DoorPanel-->
     <vgl-box-helper v-if="isDoorPanel" :object="id + '_boundingBox'" color="#666666"/>
-    <!-- <vgl-axes-helper :position="`${position.x} ${position.y} ${position.z}`" :size="2999999" :visible="isSelected"/> -->
   </vgl-group>
 </template>
 
@@ -151,19 +149,20 @@ export default {
       type: String,
       default: 'FP',
     },
+    layer: {
+      type: String,
+      default: 'Structure',
+    },
   },
   data() {
     return {
       moving: false,
       collide: false,
-      /* collide: {
-        left: false,
-        right: false,
-        lower: false,
-        upper: false,
-        front: false,
-        back: false,
-      }, */
+      prevPos: null,
+      prevX: null,
+      prevY: null,
+      prevThick: null,
+      prevPType: null,
     };
   },
   computed: {
@@ -284,9 +283,16 @@ export default {
     customGeometryBinding() {
       return [];
     },
+    stateChanged() {
+      return this.prevPos !== this.pos || this.prevX !== this.x || this.prevY !== this.y || this.prevThick !== this.thick || this.prevPType !== this.ptype;
+    },
   },
   created() {
     window.panels[this.id] = this;
+  },
+  updated() {
+    if (this.stateChanged) this.updateColliding(true);
+    this.saveState();
   },
   beforeDestroy() {
     // eslint-disable-next-line no-underscore-dangle
@@ -297,6 +303,13 @@ export default {
     this.$emit('ready');
   },
   methods: {
+    saveState() {
+      this.prevPos = this.pos;
+      this.prevX = this.x;
+      this.prevY = this.y;
+      this.prevThick = this.thick;
+      this.prevPType = this.ptype;
+    },
     magnetize(translationVector) {
       this.setNewPosition(this.fixedPosition.add(translationVector));
     },
@@ -364,10 +377,6 @@ export default {
       mouseScreenPoint.y = event.clientY - rect.top;
 
       if (mesh.isDimension || mesh.isCoordinate) {
-        const mouse = new Vector2();
-        mouse.x = (mouseScreenPoint.x / rect.width) * 2 - 1;
-        mouse.y = -(mouseScreenPoint.y / rect.height) * 2 + 1;
-
         const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint);
 
         this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
@@ -376,10 +385,10 @@ export default {
         this.moving = true;
         if (magnetism) {
           /** MAGNETISM */
-          this.$refs.vertices.showNearestVertices();
+          this.$refs.vertices.showNearestVertices(mouseScreenPoint);
           const closestVertex = this.$refs.vertices.closestVisibleVertex(mouseScreenPoint);
 
-          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex)) return;
+          if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex, mouseScreenPoint)) return;
         } else {
           this.$refs.vertices.resetAllVerticesVisibility();
         }
@@ -415,22 +424,30 @@ export default {
       else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
       else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
     },
-    updateColliding() {
+    setCollide(value) {
+      this.collide = value;
+    },
+    getCollide() {
+      return this.collide;
+    },
+    updateColliding(checkOthers = false) {
       const { [this.id]: current, ...others } = window.panels;
       const currentBox = new Box3();
       currentBox.setFromObject(this.$refs.panel.inst);
-
       this.collide = Object.values(others)
         .filter(c => c != null)
-        .map(c => c.$refs.panel.inst)
-        .reduce((isColliding, inst) => {
+        .reduce((isColliding, c) => {
+          const { inst } = c.$refs.panel;
           const box = new Box3();
           box.setFromObject(inst);
           if (currentBox.intersectsBox(box)) {
             const size = new Vector3();
             currentBox.clone().intersect(box.clone()).getSize(size);
-            return isColliding || !Object.values(size).includes(0);
+            const isBoxCollide = !Object.values(size).includes(0);
+            if (isBoxCollide) window.panels[inst.name].setCollide(isBoxCollide);
+            return isColliding || isBoxCollide;
           }
+          if (window.panels[inst.name].getCollide && checkOthers) window.panels[inst.name].updateColliding();
           return isColliding;
         }, false);
     },
@@ -459,7 +476,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

@@ -149,7 +149,7 @@ export default {
       container.appendChild(this.rightElement);
       container.appendChild(this.baseElement);
       this.containerElement = container;
-      appDiv.appendChild(container);
+      appDiv.insertBefore(container, appDiv.firstChild);
     },
     removeElements() {
       const appDiv = document.getElementById('content-3d');
@@ -308,7 +308,6 @@ export default {
   },
 };
 </script>
-
 <style>
   .plank-edge-input {
     position: absolute;

@@ -6,19 +6,11 @@
              :width="'450px'"
              :before-close="unselect">
     <el-form :model="newConnection" v-if="newConnection">
-      <!--
-      <el-form-item label="Planche femelle">
-        <el-select v-model="reactiveP2" disabled>
-          <el-option :label="`planche n°${selectedConnection.p1}`" :value="selectedConnection.p1"></el-option>
-          <el-option :label="`planche n°${selectedConnection.p2}`" :value="selectedConnection.p2"></el-option>
-        </el-select>
-      </el-form-item>
-      -->
       <el-form-item label="Mode de fixation">
         <el-container>
           <el-col :offset="3">
             <el-row v-if="isVisible('undefined')"><el-radio v-model="newConnection.type" label="undefined" >Indéfini</el-radio></el-row>
-            <el-row v-if="isVisible(undefined)"><el-radio v-model="newConnection.type" :label="undefined">Tourillon+excentrique</el-radio></el-row>
+            <el-row v-if="isVisible(undefined)"><el-radio v-model="newConnection.type" label="default">Tourillon+excentrique</el-radio></el-row>
             <el-row v-if="isVisible('free')"><el-radio v-model="newConnection.type" label="free">Pas de fixation</el-radio></el-row>
             <el-row v-if="isVisible('holeline32')"><el-radio v-model="newConnection.type" label="holeline32">Taquet tous les 32mm</el-radio></el-row>
             <el-row v-if="isVisible('adj40')"><el-radio v-model="newConnection.type" label="adj40">Taquet 3 positions</el-radio></el-row>
@@ -27,14 +19,14 @@
           </el-col>
         </el-container>
       </el-form-item>
-      <el-form-item label="Placement des excentriques">
+      <el-form-item v-if="newConnection.type == 'default'" label="Placement des excentriques">
         <el-radio v-model="newConnection.p2side" :label="1">Face 1</el-radio>
         <el-radio v-model="newConnection.p2side" :label="2">Face 2</el-radio>
       </el-form-item>
     </el-form>
     <div slot="footer">
       <el-button @click="unselect()">Annuler</el-button>
-      <el-button type="primary" @click="applyConnection()">Modifier connexion</el-button> <!-- :disabled="newConnection.isUndefinedConnection">Modifier connexion</el-button> -->
+      <el-button type="primary" @click="applyConnection()">Modifier connexion</el-button>
     </div>
   </el-dialog>
 </template>
@@ -101,7 +93,7 @@ export default {
       this.newConnection = null;
     },
     applyConnection() {
-      const updatedConnection = this.newConnection.clone();
+      const updatedConnection = this.newConnection.type === 'default' ? { ...this.newConnection, type: undefined } : { ...this.newConnection };
       this.unselect();
       this.$store.dispatch('Panels/updateConnection', updatedConnection);
     },
@@ -129,7 +121,8 @@ export default {
   watch: {
     selectedConnection(connection) {
       if (!connection) return;
-      this.newConnection = connection.clone();
+      this.newConnection = connection.type ? connection.clone() : { ...connection, type: 'default' };
+
       const connectedPanels = this.panels.filter(c => (c.id === this.newConnection.p1.toString() || c.id === this.newConnection.p2.toString()));
 
       if (connectedPanels[0].thick === 4 || connectedPanels[1].thick === 4) this.connectedPanelType = 'HDFPanel';
@@ -138,7 +131,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

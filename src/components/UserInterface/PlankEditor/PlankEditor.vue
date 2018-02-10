@@ -7,11 +7,12 @@
       <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"></div>
     </div>
     <EdgesDisplayer />
-    <DimensionEditor/>
-    <TypeEditor/>
-    <PositionEditor/>
-    <ColorEditor/>
-    <ConnectionEditor/>
+    <LayerEditor :layers="layers"/>
+    <DimensionEditor />
+    <TypeEditor />
+    <PositionEditor />
+    <ColorEditor />
+    <ConnectionEditor />
   </div>
 </template>
 
@@ -22,6 +23,7 @@ import PositionEditor from './Plugins/PositionEditor';
 import TypeEditor from './Plugins/TypeEditor';
 import ColorEditor from './Plugins/ColorEditor';
 import EdgesDisplayer from './Plugins/EdgesDisplayer';
+import LayerEditor from './Plugins/LayerEditor';
 
 export default {
   name: 'PlankEditor',
@@ -31,8 +33,10 @@ export default {
     PositionEditor,
     DimensionEditor,
     EdgesDisplayer,
+    LayerEditor,
     ConnectionEditor: () => import(/* webpackChunkName: "connection-editor" */ './Plugins/Connection/ConnectionEditor'),
   },
+  props: ['layers'],
   computed: {
     ...mapState('Panels', [
       'panels',
@@ -66,6 +70,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-</style>

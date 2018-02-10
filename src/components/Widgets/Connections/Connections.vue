@@ -62,16 +62,17 @@ export default {
     },
     generateDefaultConnections() {
       const panels = Object.values(window.panels).map(p => p.$refs.panel.inst);
-      const defaultConnections = [];
+      const defaultConnections = new Array(1000);
+      let conni = 0;
       for (let i = 0; i < panels.length - 1; i += 1) {
-        const currentPanel = panels[i];
+        const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
         currentPanel.updateMatrixWorld();
         currentPanel.geometry.computeBoundingBox();
         const currentBB = currentPanel.geometry.boundingBox.clone();
         currentBB.setFromObject(currentPanel);
 
         for (let y = i + 1; y < panels.length; y += 1) {
-          const browsingPanel = panels[y];
+          const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
           browsingPanel.updateMatrixWorld();
           browsingPanel.geometry.computeBoundingBox();
           const browsingBB = browsingPanel.geometry.boundingBox.clone();
@@ -86,9 +87,9 @@ export default {
             intersectBB.getSize(isize);
 
             // determine which Panel is P2
-            const p2name = this.getFemalePanelName({ currentBB, mesh: currentPanel }, browsingPanel, intersectCenter);
+            const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
             const newConnection = new Connection({
-              p1: currentPanel.name === p2name ? browsingPanel.name : currentPanel.name,
+              p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
               p2: p2name,
               center: intersectCenter,
               ilength: Math.max(...isize.toArray()),
@@ -98,43 +99,42 @@ export default {
             } else {
               newConnection.setAsUndefinedConnection(); // red
             }
-            defaultConnections.push(newConnection);
+            defaultConnections[conni] = newConnection;
+            conni += 1;
           }
         }
       }
+      defaultConnections.length = conni;
       this.init = false;
       return defaultConnections;
     },
     generateAllConnections(connections = this.connections) {
       const defaultConnections = this.generateDefaultConnections();
-      const newConnections = [];
-      defaultConnections.forEach(dConnection => {
+      const newConnections = new Array(defaultConnections.length);
+      for (let i = 0; i < defaultConnections.length; i += 1) {
+        const dConnection = defaultConnections[i];
         const connection = connections.find(c => c.softEquals(dConnection));
         if (connection) {
           // connection already exist, override center & intersection length
-          newConnections.push(new Connection({
+          newConnections[i] = new Connection({
             ...connection,
             center: dConnection.center,
             ilength: dConnection.ilength,
             p1: dConnection.p1,
             p2: dConnection.p2,
-          }));
+          });
         } else {
-          newConnections.push(dConnection);
+          newConnections[i] = dConnection;
         }
-      });
+      }
       return newConnections;
     },
     async setConnections() {
       // use for re-calculate the center position of each connections
       // also set free connections
       await this.$nextTick();
-      this.$store.commit('Panels/setConnections', this.generateAllConnections());
+      this.$store.commit('Panels/setConnections', { connlist: this.generateAllConnections() });
     },
   },
 };
 </script>
-
-<style scoped>
-
-</style>

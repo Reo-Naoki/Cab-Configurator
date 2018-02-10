@@ -235,7 +235,6 @@ export default {
   },
 };
 </script>
-
 <style>
   .color-picker-dialog {
     display: flex;

@@ -171,7 +171,7 @@ export default {
       if (direction === 'upper') {
         const { y, z } = this.arrows[0].position;
         if (this.plankType === 'FP') {
-          const zDistance = Math.round(Math.abs(z - position.z));
+          const zDistance = Math.abs(z - position.z);
           if (z < position.z) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + zDistance };
@@ -181,7 +181,7 @@ export default {
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - zDistance };
           }
         } else {
-          const yDistance = Math.round(Math.abs(y - position.y));
+          const yDistance = Math.abs(y - position.y);
           if (y > position.y) {
             // increase
             newDimension = { width, height: height - yDistance, depth };
@@ -192,7 +192,7 @@ export default {
       } else if (direction === 'right') {
         const { x, z } = this.arrows[1].position;
         if (this.plankType === 'VDP') {
-          const zDistance = Math.round(Math.abs(z - position.z));
+          const zDistance = Math.abs(z - position.z);
           if (z < position.z) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + zDistance };
@@ -202,7 +202,7 @@ export default {
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - zDistance };
           }
         } else {
-          const xDistance = Math.round(Math.abs(x - position.x));
+          const xDistance = Math.abs(x - position.x);
           if (x < position.x) {
             // increase
             newDimension = { width: width + xDistance, height, depth };
@@ -213,7 +213,7 @@ export default {
       } else if (direction === 'lower') {
         const { y, z } = this.arrows[2].position;
         if (this.plankType === 'FP') {
-          const zDistance = Math.round(Math.abs(z - position.z));
+          const zDistance = Math.abs(z - position.z);
           if (z < position.z) {
             // increase
             newDimension = { width, height, depth: depth + zDistance };
@@ -221,7 +221,7 @@ export default {
             newDimension = { width, height, depth: depth - zDistance };
           }
         } else {
-          const yDistance = Math.round(Math.abs(y - position.y));
+          const yDistance = Math.abs(y - position.y);
           if (y < position.y) {
             // increase
             newPosition = { x: this.plankPosition.x, y: this.plankPosition.y + yDistance, z: this.plankPosition.z };
@@ -235,7 +235,7 @@ export default {
         // TODO
         const { x, z } = this.arrows[3].position;
         if (this.plankType === 'VDP') {
-          const zDistance = Math.round(Math.abs(z - position.z));
+          const zDistance = Math.abs(z - position.z);
           if (z < position.z) {
             // increase
             newDimension = { width, height, depth: depth + zDistance };
@@ -243,7 +243,7 @@ export default {
             newDimension = { width, height, depth: depth - zDistance };
           }
         } else {
-          const xDistance = Math.round(Math.abs(x - position.x));
+          const xDistance = Math.abs(x - position.x);
           if (x < position.x) {
             // increase
             newDimension = { width: width - xDistance, height, depth };
@@ -254,6 +254,8 @@ export default {
           }
         }
       }
+
+      newDimension = { width: Math.round(newDimension.width), height: Math.round(newDimension.height), depth: Math.round(newDimension.depth) };
 
       if (newDimension) {
         let dimensionX;
@@ -311,9 +313,9 @@ export default {
 
         this.inputElement.value = dimensions[key];
 
-        if (newPosition) this.$emit('update:plankPosition', newPosition);
         // something has changed, check value integrity
         this.$emit('update:plankDimension', newDimension);
+        if (newPosition) this.$emit('update:plankPosition', newPosition);
       }
     },
     resizeByValue(direction, value) {
@@ -385,7 +387,7 @@ export default {
       this.inputElement = this.createInput();
       container.appendChild(this.inputElement);
       this.containerElement = container;
-      appDiv.appendChild(container);
+      appDiv.insertBefore(container, appDiv.firstChild);
     },
     removeElements() {
       const appDiv = document.getElementById('content-3d');
@@ -425,13 +427,12 @@ export default {
         this.inputElement.addEventListener('keyup', this.onKeyUp);
       } else {
         this.inputElement.removeEventListener('keydown', this.onKeyDown);
-        this.inputElement.addEventListener('keyup', this.onKeyUp);
+        this.inputElement.removeEventListener('keyup', this.onKeyUp);
       }
     },
   },
 };
 </script>
-
 <style>
   .plank-dimension-input {
     position: absolute;

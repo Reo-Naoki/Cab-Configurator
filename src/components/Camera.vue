@@ -53,23 +53,8 @@ export default {
     controls.minDistance = 5000;
     controls.maxDistance = 80000;
     controls.addEventListener('change', this.vglNamespace.update);
-    controls.addEventListener('start', this.handlerOrbitStart);
-    controls.addEventListener('end', this.handlerOrbitEnd);
     this.vglNamespace.beforeRender.unshift(controls.update);
     EventBus.controls = controls;
   },
-  methods: {
-    handlerOrbitStart() {
-      this.$store.commit('Panels/enableDragControls', false);
-      // this.$store.commit('Camera/selectObject3D');
-    },
-    handlerOrbitEnd() {
-      this.$store.commit('Panels/enableDragControls', true);
-    },
-  },
 };
 </script>
-
-<style scoped>
-
-</style>

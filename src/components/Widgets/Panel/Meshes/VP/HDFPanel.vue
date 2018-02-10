@@ -85,21 +85,23 @@ export default {
       const hasFeuillure = {
         left: false, top: false, bottom: false, right: false,
       };
+
       for (let i = 0; i < this.relatedConnections.length; i += 1) {
         // side detection for HDF connection
         const currentConnection = this.relatedConnections[i];
         if (currentConnection.isHDFConnection) {
           // is left, right, top or bottom connection
-          const { p1 } = this.relatedConnections[i];
-          const cPanel = window.panels[p1.toString()];
+          const { p1, p2 } = currentConnection;
+          const cPanel = (p1.toString() !== this.id ? window.panels[p1] : window.panels[p2]);
           const { x: cx, y: cy } = cPanel.position;
           const cType = cPanel.ptype;
+
           if (cType === 'VDP') {
-            if (cx < this.position.x) hasFeuillure.left = true;
-            else if (cx > this.position.x) hasFeuillure.right = true;
+            if (cx < this.fixedPosition.x) hasFeuillure.left = true;
+            else if (cx > this.fixedPosition.x) hasFeuillure.right = true;
           } else if (cType === 'FP') {
-            if (cy < this.position.y) hasFeuillure.bottom = true;
-            else if (cy > this.position.y) hasFeuillure.top = true;
+            if (cy < this.fixedPosition.y) hasFeuillure.bottom = true;
+            else if (cy > this.fixedPosition.y) hasFeuillure.top = true;
           }
         }
       }
@@ -156,7 +158,7 @@ export default {
       }
       this.hasFeuillure = hasFeuillure;
       const self = this;
-      this.$nextTick(() => self.updateColliding());
+      this.$nextTick(() => self.updateColliding(true));
     },
   },
   mounted() {
@@ -169,7 +171,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

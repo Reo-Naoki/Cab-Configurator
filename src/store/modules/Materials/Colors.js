@@ -1,6 +1,6 @@
 /* eslint-disable camelcase,no-console  */
 import Vue from 'vue';
-import fabAPI from '@/api/fab';
+import callFabApi from '@/api/fab';
 
 class Color {
   constructor(args = {}) {
@@ -98,9 +98,11 @@ const actions = {
   setColorsFromAPI(context, specificColors = []) {
     return new Promise(async (resolve, reject) => {
       try {
-        const { data: receivedColors } = await fabAPI.post('', specificColors, {
-          params: { route: 'colors' },
-        });
+        //        const { data: receivedColors } = await fabAPI.post('', specificColors, {
+        //          params: { route: 'colors' },
+        //        });
+        const { data: receivedColors } = await callFabApi('colors', specificColors);
+
         // if (receivedColors.error) reject(new Error('specific color not found'));
         await context.dispatch('setAllColors', receivedColors);
         resolve();

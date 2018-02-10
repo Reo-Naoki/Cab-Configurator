@@ -191,7 +191,6 @@ export default {
 };
 
 </script>
-
 <style scoped>
 .new-round-material-color {
   display: flex;

@@ -3,7 +3,7 @@ import { Message, Notification, MessageBox } from 'element-ui';
 import { Box3, Vector3 } from 'three';
 import callDajax from '../../api/dajax';
 import EventBus from '../../components/EventBus/EventBus';
-import sendMessage from '../../api/postMessage';
+import { sendMessage } from '../../api/postMessage';
 import PlanksDimensions from '../../components/Widgets/Panel/Models/PlanksDimensions';
 import Connection from '../../components/Widgets/Connections/Models/Connection';
 
@@ -11,7 +11,7 @@ const state = {
   panels: [],
   connections: [],
   panelsHistory: [],
-  enableDragControls: true,
+  layers: [],
   enableMoving: false,
   enableResizing: false,
   price: '---',
@@ -51,9 +51,18 @@ const getters = {
 const mutations = {
   setPanels(s, panels) {
     s.panels = panels.map(p => ({ ...p, id: p.id.split('-')[0], material: p.material.toString() }));
+    s.panels = s.panels.map(p => (p.layer ? p : { ...p, layer: 'Structure' }));
   },
   addPanel(s, p) {
-    Vue.set(s.panels, s.panels.length, { ...p, id: p.id.split('-')[0], material: p.material.toString() });
+    Vue.set(s.panels, s.panels.length, {
+      ...p,
+      id: p.id.split('-')[0],
+      material: p.material.toString(),
+      layer: 'Structure',
+    });
+  },
+  setLayers(s, data) {
+    s.layers = data;
   },
   setPrevPosition(s, prevPosition) {
     s.prevPosition = prevPosition;
@@ -90,31 +99,50 @@ const mutations = {
     const index = s.panels.findIndex(p => String(p.id) === String(id));
     if (index >= 0) Vue.delete(s.panels, index);
   },
-  enableDragControls(s, isEnabled = true) {
-    s.enableDragControls = isEnabled;
-  },
   enableMoving(s, isEnable = true) {
     s.enableMoving = isEnable;
   },
   enableResizing(s, isEnable = true) {
     s.enableResizing = isEnable;
   },
-  setConnections(s, connlist) {
-    s.connections = connlist.map((c) => {
-      if (c.type === 'hinged') {
-        const p1RealConnections = s.connections.filter(connection => ((connection.p1 === c.p1 && connection.p2 !== c.p2) || (connection.p2 === c.p1 && connection.p1 !== c.p2))
-                                                                    && connection.type !== 'undefined'
-                                                                    && connection.type !== 'free');
-        const p2RealConnections = s.connections.filter(connection => ((connection.p1 === c.p2 && connection.p2 !== c.p1) || (connection.p2 === c.p2 && connection.p1 !== c.p1))
-                                                                    && connection.type !== 'undefined'
-                                                                    && connection.type !== 'free');
-        if (p1RealConnections.length > 0 && p2RealConnections.length === 0) return new Connection({ ...c, p1: c.p2, p2: c.p1 });
-        if (p2RealConnections.length > 0 && p1RealConnections.length === 0) return c;
-        return new Connection({ ...c, type: 'undefined' });
+  setConnections(s, data) {
+    if (data.connlist && data.createNew) {
+      s.connections = data.connlist.map((c) => {
+        const index = s.connections.findIndex(conn => (conn.p1 === c.p1 && conn.p2 === c.p2) || (conn.p1 === c.p2 && conn.p2 === c.p1));
+        const panel1 = s.panels.find(panel => panel.id === c.p1.toString());
+        const panel2 = s.panels.find(panel => panel.id === c.p2.toString());
+        return (index < 0 && (panel1.thick === 4 || panel2.thick === 4) ? new Connection({ ...c, type: 'hdfgrove' }) : new Connection(c));
+      });
+    } else {
+      s.connections = data.connlist;
+    }
+
+    for (let i = 0; i < s.connections.length; i += 1) {
+      if (s.connections[i].type === 'hinged') {
+        const c = s.connections[i];
+        const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
+                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+        const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
+                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+
+        if (p1HasRealConnection && !p2HasRealConnection) {
+          for (let conni = 0; conni < s.connections.length; conni += 1) {
+            const conn = s.connections[conni];
+            if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
+              s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+            }
+          }
+          s.connections[i] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
+        } else if (!p1HasRealConnection && p2HasRealConnection) {
+          for (let conni = 0; conni < s.connections.length; conni += 1) {
+            const conn = s.connections[conni];
+            if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
+              s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+            }
+          }
+        } else s.connections[i] = new Connection({ ...s.connections[i], type: 'undefined' });
       }
-      const index = s.connections.findIndex(connection => connection.p1 === c.p1 && connection.p2 === c.p2);
-      return (index < 0 && (s.panels[c.p1 - 1].thick === 4 || s.panels[c.p2 - 1].thick === 4) ? new Connection({ ...c, type: 'hdfgrove' }) : new Connection(c));
-    });
+    }
   },
   addConnection(s, connection) {
     Vue.set(s.connections, s.connections.length, new Connection(connection));
@@ -122,6 +150,58 @@ const mutations = {
   updateConnection(s, { index = -1, value }) {
     if (index < 0) return;
     Vue.set(s.connections, index, new Connection(value));
+
+    if (value.type === 'hinged') {
+      const c = s.connections[index];
+      const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
+                                                            && (conn.type !== 'undefined' && conn.type !== 'free' && conn.type !== 'hinged'));
+      const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
+                                                            && (conn.type !== 'undefined' && conn.type !== 'free' && conn.type !== 'hinged'));
+
+      if (p1HasRealConnection && !p2HasRealConnection) {
+        for (let conni = 0; conni < s.connections.length; conni += 1) {
+          const conn = s.connections[conni];
+          if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
+            s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+          }
+        }
+        s.connections[index] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
+      } else if (!p1HasRealConnection) {
+        for (let conni = 0; conni < s.connections.length; conni += 1) {
+          const conn = s.connections[conni];
+          if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
+            s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+          }
+        }
+      } else s.connections[index] = new Connection({ ...s.connections[index], type: 'undefined' });
+    }
+
+    for (let i = 0; i < s.connections.length; i += 1) {
+      if (s.connections[i].type === 'hinged') {
+        const c = s.connections[i];
+        const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
+                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+        const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
+                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+
+        if (p1HasRealConnection && !p2HasRealConnection) {
+          for (let conni = 0; conni < s.connections.length; conni += 1) {
+            const conn = s.connections[conni];
+            if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
+              s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+            }
+          }
+          s.connections[i] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
+        } else if (!p1HasRealConnection && p2HasRealConnection) {
+          for (let conni = 0; conni < s.connections.length; conni += 1) {
+            const conn = s.connections[conni];
+            if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
+              s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
+            }
+          }
+        } else s.connections[i] = new Connection({ ...s.connections[i], type: 'undefined' });
+      }
+    }
   },
   deleteConnection(s, { p1, p2 }) {
     const index = s.connections.findIndex(e => String(e.p1) === String(p1) && String(e.p2) === String(p2));
@@ -155,7 +235,7 @@ const actions = {
         context.commit('materials/setMaterials', materials, { root: true });
       }
       context.commit('setPanels', rlist);
-      context.commit('setConnections', connlist);
+      context.commit('setConnections', { connlist, createNew: true });
       resolve();
     });
   },
@@ -192,8 +272,9 @@ const actions = {
   deletePanelConnections(context, id) {
     // delete every connections related to the ID panel
     const { state: s, commit } = context;
+    const idStr = id.toString();
     const panelConnections = s.connections
-      .filter(e => e.p1.toString() === id.toString() || e.p2.toString() === id.toString());
+      .filter(e => e.p1.toString() === idStr || e.p2.toString() === idStr);
     panelConnections.forEach(c => commit('deleteConnection', c));
   },
   deletePanel(context, id) {
@@ -247,8 +328,14 @@ const actions = {
           price: context.state.price,
           id: saveAsNew ? 0 : context.rootState.User.currentProjectID || 0,
         };
-        callDajax('saveproject', payload); // postMessage feature
-        resolve();
+        callDajax('saveproject', payload)
+          .then((response) => {
+            context.dispatch('Panels/projectSaved', response);
+            resolve();
+          }).catch(error => {
+            console.error('Dajax error ', error);
+            reject(error);
+          });
       } catch (e) {
         reject(e);
       }
@@ -308,7 +395,8 @@ const actions = {
       img: window.renderer.domElement.toDataURL('image/png'),
       id: context.rootState.User.currentProjectID || 0,
     };
-    callDajax('saveandcart', payload);
+    callDajax('saveandcart', payload)
+      .then((response) => { context.dispatch('Panels/addedToCart', response); });
   },
   addedToCart(context, data) {
     if (data.success) {
@@ -321,29 +409,19 @@ const actions = {
     // ask for price
     return new Promise(async (resolve, reject) => {
       context.commit('setPrice');
-      try {
-        const isProductionBuild = process.env.NODE_ENV === 'production';
-        const path = isProductionBuild ? 'https://dessinetonmeuble.fr/' : 'https://dev.dessinetonmeuble.fr/';
-        const response = await fetch(`${path}/modules/adesigner/dajax.php`, {
-          method: 'POST',
-          body: JSON.stringify({
-            method: 'sendrlist',
-            data: context.getters.serialize,
-          }),
+      callDajax('sendrlist', context.getters.serialize)
+        .then((response) => {
+          console.log('sendrlist returned result');
+          if (response.heroresult) {
+            const result = JSON.parse(response.heroresult);
+            context.commit('setPrice', result.price);
+          }
+          resolve();
+        })
+        .catch(error => {
+          console.error('Dajax error when trying to get price', error);
+          reject(error);
         });
-        const json = await response.json();
-        // console.log(json);
-        if (json.heroresult) {
-          const result = JSON.parse(json.heroresult);
-          context.commit('setPrice', result.price);
-        }
-        resolve();
-      } catch (e) {
-        // TODO
-        console.error(e);
-        Message.error(e.toString());
-        reject(e);
-      }
     });
   },
 };

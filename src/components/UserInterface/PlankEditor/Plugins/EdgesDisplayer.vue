@@ -1,7 +1,13 @@
 <template>
   <div class="wrapper-line" v-if="selectedObject3DIndex !== -1">
-    <div class="inline-block">Afficher les Placages de chant</div>
-    <el-switch v-model="showEdgesSelector"></el-switch>
+    <div class="content-menu-left">
+      <div class="w-form">
+        <div class="dimension-wrapper">
+          <label class="inline-block">Afficher les Placages de chant</label>
+          <el-switch v-model="showEdgesSelector"></el-switch>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -36,7 +42,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-</style>

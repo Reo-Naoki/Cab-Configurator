@@ -2,7 +2,7 @@
   <div>
     <Header />
     <div class="content-vgl">
-      <PlankEditor />
+      <PlankEditor :layers="getLayers"/>
       <div id="content-3d" class="content-3d">
         <vgl-renderer ref="renderer" :antialias="true" style="height: 100%" precision="highp" power-preference="high-performance" :preserve-drawing-buffer="true" >
           <Materials :materials="materials" />
@@ -19,7 +19,7 @@
               color-grid="#cfcfcf" />
           </vgl-scene>
         </vgl-renderer>
-        <DisplayOptions />
+        <DisplayOptions :layers="getLayers"/>
         <ButtonPlus />
       </div>
     </div>
@@ -28,6 +28,7 @@
 
 <script>
 import Vue from 'vue';
+import { mapState } from 'vuex';
 import * as THREE from 'three';
 import Materials from './Materials/Materials';
 import EventBus from './EventBus/EventBus';
@@ -117,7 +118,25 @@ export default {
     window.app = this;
     window.vue = Vue;
   },
+  computed: {
+    ...mapState('Panels', [
+      'panels',
+      'layers',
+    ]),
+    getLayers() {
+      let panelLayers = this.panels.filter(l => l.layer).map(l => ({ name: l.layer }));
+      panelLayers = panelLayers.concat(this.layers);
+      panelLayers.sort((a, b) => (a.name > b.name ? 1 : -1));
+      panelLayers = panelLayers.filter((l, index) => panelLayers.findIndex(layer => layer.name === l.name) === index);
+      this.setLayers(panelLayers);
+
+      return panelLayers;
+    },
+  },
   methods: {
+    setLayers(data) {
+      this.$store.commit('Panels/setLayers', data);
+    },
     handleUpdateMaterial({ oldMaterialID, newMaterialID, color }) {
       if (newMaterialID == null && color == null) {
         this.$store.dispatch('Panels/replaceMaterialInPanels', { oldMaterial: oldMaterialID, newMaterial: 1 });
@@ -133,6 +152,5 @@ export default {
   },
 };
 </script>
-
 <style>
 </style>

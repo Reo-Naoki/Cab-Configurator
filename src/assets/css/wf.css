@@ -652,6 +652,13 @@ label {
   color: #fff;
 }
 
+.round-icon-2.disabled {
+  background-color: #bfbfbf;
+  color: #fff;
+  cursor: not-allowed;
+  display: block;
+}
+
 .round-icon-2.medium-emphasis.red {
   -webkit-transition: background-color 300ms ease, border-color 300ms ease;
   transition: background-color 300ms ease, border-color 300ms ease;

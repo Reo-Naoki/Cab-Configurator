@@ -14,7 +14,7 @@
             <el-row v-if="isVisible('free')"><el-radio v-model="newConnection.type" label="free">Pas de fixation</el-radio></el-row>
             <el-row v-if="isVisible('holeline32')"><el-radio v-model="newConnection.type" label="holeline32">Taquet tous les 32mm</el-radio></el-row>
             <el-row v-if="isVisible('adj40')"><el-radio v-model="newConnection.type" label="adj40">Taquet 3 positions</el-radio></el-row>
-            <el-row v-if="isVisible('hdfgrove')"><el-radio v-model="newConnection.type" label="hdfgrove">Feuillure pour fond 3mm</el-radio></el-row>
+            <el-row v-if="isVisible('hdfgrove')"><el-radio v-model="newConnection.type" label="hdfgrove">Feuillure pour fond 4mm</el-radio></el-row>
             <el-row v-if="isVisible('hinged')"><el-radio v-model="newConnection.type" label="hinged">Porte</el-radio></el-row>
           </el-col>
         </el-container>

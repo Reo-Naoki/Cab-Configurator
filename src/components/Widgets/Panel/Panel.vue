@@ -1,6 +1,6 @@
 <template>
   <vgl-group>
-    <component ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate" v-if="isLayerVisible"/>
+    <component v-if="isRenderObject" ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate" :visible="isLayerVisible" />
   </vgl-group>
 </template>
 
@@ -36,22 +36,26 @@ export default {
     };
   },
   inject: ['vglNamespace'],
-  props: ['id', 'index', 'ptype', 'x', 'y', 'thick', 'pos', 'points', 'layer'],
+  props: ['id', 'index', 'x', 'y', 'thick', 'ptype', 'pos', 'points', 'layer', 'groupName'],
   computed: {
     ...mapGetters('DisplayManager', [
       'isItemDisplayed',
     ]),
-    ...mapState('Camera', [
-      'selectedObject3D',
-    ]),
     ...mapState('Panels', [
       'connections',
+    ]),
+    ...mapState('Camera', [
+      'selectedObject3D',
     ]),
     relatedConnections() {
       return this.connections.filter(c => c.containsPanel(this.id));
     },
     isLayerVisible() {
       return this.isItemDisplayed(this.layer);
+    },
+    isRenderObject() {
+      if (this.selectedObject3D && this.selectedObject3D.object3d.name === this.groupName) return true;
+      return this.isLayerVisible;
     },
     component() {
       const connections = this.relatedConnections || [];

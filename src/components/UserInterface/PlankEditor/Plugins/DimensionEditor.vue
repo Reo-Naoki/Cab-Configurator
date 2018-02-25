@@ -5,22 +5,23 @@
       <div class="w-form">
         <div class="dimension-wrapper">
           <label class="inline-block normal">{{ panelType === 'VP' ? 'Largeur' : 'Longueur' }}:</label>
-          <input class="dimension-box w-input" v-model.number.lazy="x"/>
+          <input class="dimension-box w-input" v-model.number.lazy="x" :disabled="!panel.resizable" />
         </div>
       </div>
       <div class="w-form">
         <div class="dimension-wrapper">
           <label class="inline-block normal">{{ panelType === 'FP' ? 'Largeur' : 'Hauteur' }}:</label>
-          <input class="dimension-box w-input" v-model.number.lazy="y"/>
+          <input class="dimension-box w-input" v-model.number.lazy="y" :disabled="!panel.resizable" />
         </div>
       </div>
       <div class="w-form">
         <div class="dimension-wrapper">
           <label class="inline-block normal">Epaisseur:</label>
-          <select class="dimension-select w-select" v-model.number="thick">
-            <option :value="4" v-if="panelType === 'VP'">3 mm</option>
+          <select class="dimension-select w-select" v-model.number="thick" :disabled="!panel.resizable">
+            <option :value="4" v-if="panelType === 'VP'">4 mm</option>
             <option :value="18">18 mm</option>
             <option :value="36" v-if="panelType !== 'VP'">36 mm</option>
+            <option v-if="specialThick" :value="thick">{{thick}} mm</option>
           </select>
         </div>
       </div>
@@ -29,7 +30,7 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { mapState } from 'vuex';
 import { Switch } from 'element-ui';
 
 export default {
@@ -41,9 +42,6 @@ export default {
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
-    ]),
-    ...mapGetters('DisplayManager', [
-      'isItemDisplayed',
     ]),
     selectedObject3DIndex() {
       if (!this.selectedObject3D) return -1;
@@ -57,6 +55,9 @@ export default {
     },
     panelType() {
       return this.panel.ptype;
+    },
+    specialThick() {
+      return this.thick !== 4 && this.thick !== 18 && this.thick !== 36;
     },
     x: {
       get() { return this.panel.x; },

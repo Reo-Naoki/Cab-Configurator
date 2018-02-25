@@ -126,8 +126,8 @@ export default {
     getLayers() {
       let panelLayers = this.panels.filter(l => l.layer).map(l => ({ name: l.layer }));
       panelLayers = panelLayers.concat(this.layers);
-      panelLayers.sort((a, b) => (a.name > b.name ? 1 : -1));
       panelLayers = panelLayers.filter((l, index) => panelLayers.findIndex(layer => layer.name === l.name) === index);
+      panelLayers.sort((a, b) => ((a.name > b.name || b.name === 'Structure') ? 1 : -1));
       this.setLayers(panelLayers);
 
       return panelLayers;

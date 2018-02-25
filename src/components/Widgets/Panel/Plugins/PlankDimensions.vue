@@ -4,12 +4,10 @@
       v-for="(arrow, index) in stringifyArrows" :key="arrow.name + index"
       ref="arrows"
       v-bind="arrow"
-      :visible="visible"
       :color="arrowColor"
       :length="arrowLength"
       :head-length="arrowHeadLength"
-      :head-width="arrowHeadWidth">
-    </vgl-arrow-helper>
+      :head-width="arrowHeadWidth" />
   </div>
 </template>
 
@@ -38,7 +36,11 @@ export default {
       type: String,
       required: true,
     },
-    visible: {
+    plankPoints: {
+      type: Array,
+      required: false,
+    },
+    isGroupArrow: {
       type: Boolean,
       default: false,
     },
@@ -148,6 +150,7 @@ export default {
       if (arrows == null) return;
       for (let i = 0; i < arrows.length; i += 1) {
         arrows[i].inst.isDimension = true;
+        if (this.isGroupArrow) arrows[i].inst.isGroupArrow = true;
         for (let ii = 0; ii < arrows[i].inst.children.length; ii += 1) {
           arrows[i].inst.children[ii].name = arrows[i].inst.name;
           arrows[i].inst.children[ii].isDimension = true;
@@ -313,10 +316,25 @@ export default {
 
         this.inputElement.value = dimensions[key];
 
+        if (this.plankPoints) {
+          const maxX = Math.max(...this.plankPoints.map(p => p[0]));
+          const maxY = Math.max(...this.plankPoints.map(p => p[1]));
+          const minX = Math.min(...this.plankPoints.map(p => (p[0] === 0 ? Number.MAX_VALUE : p[0])));
+          const minY = Math.min(...this.plankPoints.map(p => (p[1] === 0 ? Number.MAX_VALUE : p[1])));
+          const newPoints = this.plankPoints.map(point => (this.isResizablePoint(point, maxX, maxY) ? this.resizePoint(point, newDimension, minX, minY, maxX, maxY) : point));
+          this.$emit('update:plankPoints', newPoints);
+        }
         // something has changed, check value integrity
         this.$emit('update:plankDimension', newDimension);
-        if (newPosition) this.$emit('update:plankPosition', newPosition);
+        if (newPosition && !this.isGroupArrow) this.$emit('update:plankPosition', newPosition);
       }
+    },
+    isResizablePoint(point, maxX, maxY) {
+      return (point[0] === maxX && point[1] === maxY) || (point[0] === 0 && point[1] === maxY) || (point[0] === maxX && point[1] === 0);
+    },
+    resizePoint(point, dimension, minX, minY, maxX, maxY) {
+      return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
+        point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
     },
     resizeByValue(direction, value) {
       let newPosition = null;

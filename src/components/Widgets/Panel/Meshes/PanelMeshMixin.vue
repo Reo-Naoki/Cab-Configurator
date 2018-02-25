@@ -1,22 +1,51 @@
 <!--suppress HtmlUnknownTag -->
 <template>
-  <vgl-group :rotation="boxRotation" :name="id + '_group'">
-    <vgl-box-geometry v-if="customGeometry == null"
-                      :name="id + '_geometry'"
+  <vgl-group :rotation="boxRotation" :name="id + '_group'" :visible="visible">
+    <vgl-box-geometry :name="id + '_geometry'"
                       ref="geometry"
-                      :width-segments="2"
-                      :height-segments="2"
-                      :depth-segments="2"
-                      :width="isDoorPanel ? this.realDimensionByType.width : dimensionsByType.width"
-                      :height="isDoorPanel ? this.realDimensionByType.height : dimensionsByType.height"
-                      :depth="isHDFPanel ? 0.1 : (isDoorPanel ? this.realDimensionByType.depth : dimensionsByType.depth)" />
-    <component v-else :is="customGeometry" v-bind="customGeometryBinding" />
-    <vgl-mesh ref="panel"
+                      :width-segments="1"
+                      :height-segments="1"
+                      :depth-segments="1"
+                      :width="isDoorPanel ? realDimensionByType.width : dimensionsByType.width"
+                      :height="isDoorPanel ? realDimensionByType.height : dimensionsByType.height"
+                      :depth="isHDFPanel ? 0.1 : (isDoorPanel ? realDimensionByType.depth : dimensionsByType.depth)" />
+    <vgl-mesh ref='panel'
               :geometry="id + '_geometry'"
               :material="materials"
+              :rotation="boxRotation"
               :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
               :name="id"
-              :visible="true" />
+              :visible="!customGeometry" />
+
+    <!-- VDPwithPoints(Shape Panel) -->
+    <div v-if="customGeometry">
+      <component :is="customGeometry" v-bind="customGeometryBinding" />
+      <vgl-mesh ref='leftPhysicalGeometry'
+                :geometry="id + '_physicalGeometry'"
+                :material="materials"
+                :rotation="shapeSideRotation"
+                :position="`${fixedPosition.x - dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                :name="id + '_left_physicalGeometry'" />
+      <vgl-mesh ref='rightPhysicalGeometry'
+                :geometry="id + '_physicalGeometry'"
+                :material="materials"
+                :rotation="shapeSideRotation"
+                :position="`${fixedPosition.x + dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                :name="id + '_right_physicalGeometry'" />
+      <div v-for="(height, index) in shapeHeights" :key="`${id}_${index}_physicalGeometry`">
+        <vgl-plane-geometry :width="dimensionsByType.width"
+                            :height="height"
+                            :name="`${id}_${index}_physicalGeometry`" />
+        <vgl-mesh :ref="`${index}_physicalGeometry`"
+                  :geometry="`${id}_${index}_physicalGeometry`"
+                  :material="materials[index + 1]"
+                  :rotation="shapeRotations[index]"
+                  :position="`${shapePositions[index].x} ${shapePositions[index].y} ${shapePositions[index].z}`"
+                  :name="`${id}_${index}_physicalGeometry`" />
+        <vgl-box-helper :object="`${id}_${index}_physicalGeometry`" color="#666666"/>
+      </div>
+    </div>
+    <!-------------------------------->
 
     <!-- HDFPanel -->
     <vgl-group v-if="customGeometry == null && isHDFPanel">
@@ -38,16 +67,17 @@
                         :width-segments="1"
                         :height-segments="1"
                         :depth-segments="1"
-                        :width="dimensionsByType.width + (this.hasFeuillure.left ? this.dimensionsMarginLeft : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight : 0)"
-                        :height="dimensionsByType.height + (this.hasFeuillure.top ? this.dimensionsMarginTop : 0) + (this.hasFeuillure.bottom ? this.dimensionsMarginBottom : 0)"
-                        :depth="dimensionsByType.depth + 5" />
+                        :width="hdfPhysicalDimensions.width"
+                        :height="hdfPhysicalDimensions.height"
+                        :depth="hdfPhysicalDimensions.depth" />
       <vgl-mesh :geometry="id + '_physicalGeometry'"
+                ref='physicalGeometry'
                 :material="physicalPanelMaterials"
-                :position="`${fixedPosition.x - (this.hasFeuillure.left ? this.dimensionsMarginLeft / 2 : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight / 2 : 0)} `
-                            + `${fixedPosition.y - (this.hasFeuillure.bottom ? this.dimensionsMarginBottom / 2 : 0) + (this.hasFeuillure.top ? this.dimensionsMarginTop / 2 : 0)} `
-                            + `${fixedPosition.z}`"
+                :position="`${hdfPhysicalPosition.x} ${hdfPhysicalPosition.y} ${hdfPhysicalPosition.z}`"
                 :name="id + '_physicalGeometry'" />
     </vgl-group>
+    <!------------->
+
     <!-- DoorPanel -->
     <vgl-group v-else-if="customGeometry == null && isDoorPanel">
        <!-- Magnetic Panel -->
@@ -65,18 +95,19 @@
                 :name="id + '_boundingBox'"
                 :visible="false" />
     </vgl-group>
+    <!--------------->
 
     <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension="dimensionsByType" :plank-name="id" :plank-type="ptype"/>
     <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-name="id" :plank-type="ptype" v-if="showStickers"/>
     <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-i-d="id" :plank-type="ptype" :connections="relatedConnections" v-if="showConnections" />
-    <PlankEdges :plank-dimension="dimensionsByType" :plank-position="fixedPosition" :plank-type="ptype" :plank-edges.sync="edges" v-if="showEdgesSelector"/>
-    <PlankCoordinate ref="coordinate" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" :visible="showCoordinateArrows" />
-    <PlankDimensions ref="dimensions" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" :visible="showDimensionArrows" />
+    <PlankEdges :plank-dimension="dimensionsByType" :plank-position="fixedPosition" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector"/>
+    <PlankCoordinate ref="coordinate" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
+    <PlankDimensions ref="dimensions" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
     <component v-if="pluginComponent" :is="pluginComponent" v-bind="pluginBinding"/>
 
     <!-- Bounding Box for Magnetic Panel of DoorPanel -->
-    <vgl-box-helper v-if="isDoorPanel" :object="id" color="#cccccc"/>
+    <vgl-box-helper v-else-if="isDoorPanel" :object="id" color="#cccccc"/>
     <!-- Bounding Box for Magnetic Panel of HDFPanel -->
     <vgl-box-helper v-else-if="isHDFPanel" :object="id + '_boundingBox'" color="#3C3C3C"/>
     <!-- Bounding Box for Physical Panel -->
@@ -88,9 +119,7 @@
 </template>
 
 <script>
-import {
-  Vector2, Vector3, Box3,
-} from 'three';
+import { Vector2, Vector3, Box3 } from 'three';
 import { mapGetters, mapState } from 'vuex';
 import PlankVertices from '../Plugins/PlankVertices';
 import PlankStickers from '../Plugins/PlankStickers';
@@ -153,16 +182,28 @@ export default {
       type: String,
       default: 'Structure',
     },
+    points: {
+      type: Array,
+      required: false,
+    },
+    groupName: {
+      type: String,
+      required: false,
+    },
+    groupType: {
+      type: String,
+      required: false,
+    },
+    visible: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
       moving: false,
       collide: false,
-      prevPos: null,
-      prevX: null,
-      prevY: null,
-      prevThick: null,
-      prevPType: null,
+      prevType: null,
     };
   },
   computed: {
@@ -172,7 +213,6 @@ export default {
     ...mapState('Camera', [
       'selectedObject3D',
       'hoveredObject3D',
-      'dragging',
     ]),
     ...mapState('Panels', [
       'connections',
@@ -228,9 +268,14 @@ export default {
       get() { return this.$attrs.edges; },
       set(val) { this.$emit('update:edges', val); },
     },
-
     dimensionsByType() {
       return {};
+    },
+    shapePoints: {
+      get() {
+        return this.points;
+      },
+      set(val) { this.$emit('update:points', val); },
     },
     fixedPosition: {
       get() {
@@ -252,7 +297,9 @@ export default {
       return `${this.rotation.x} ${this.rotation.y} ${this.rotation.z}`;
     },
     physicalPanelMaterials() {
+      if (!this.edges) return null;
       const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
+      if (this.collide) return 'red';
       return [
         formattedEdges[1] ? this.material.toString() : 'raw',
         formattedEdges[3] ? this.material.toString() : 'raw',
@@ -283,16 +330,16 @@ export default {
     customGeometryBinding() {
       return [];
     },
-    stateChanged() {
-      return this.prevPos !== this.pos || this.prevX !== this.x || this.prevY !== this.y || this.prevThick !== this.thick || this.prevPType !== this.ptype;
-    },
   },
   created() {
     window.panels[this.id] = this;
   },
   updated() {
-    if (this.stateChanged) this.updateColliding(true);
-    this.saveState();
+    if (this.prevType !== this.ptype || this.isSelected) {
+      const self = this;
+      this.$nextTick(() => self.updateColliding(true));
+    }
+    this.prevType = this.ptype;
   },
   beforeDestroy() {
     // eslint-disable-next-line no-underscore-dangle
@@ -303,19 +350,13 @@ export default {
     this.$emit('ready');
   },
   methods: {
-    saveState() {
-      this.prevPos = this.pos;
-      this.prevX = this.x;
-      this.prevY = this.y;
-      this.prevThick = this.thick;
-      this.prevPType = this.ptype;
-    },
     magnetize(translationVector) {
       this.setNewPosition(this.fixedPosition.add(translationVector));
     },
     setAsPanel() {
       // add in ThreeJS object a tag to identify the mesh as a Panel
       this.$refs.panel.inst.isPanel = true;
+      if (this.$refs.physicalGeometry) this.$refs.physicalGeometry.inst.isPhysicalGeometry = true;
     },
     getAllPlanksInWorld() {
       const { vglNamespace, id } = this;
@@ -368,7 +409,7 @@ export default {
       // unfix origin position
       this.fixedPosition = position;
     },
-    move(event, position, mesh, faceIndex, magnetism) {
+    move(event, position, mesh, magnetism) {
       this.collide = false;
 
       const mouseScreenPoint = new Vector2();
@@ -377,17 +418,21 @@ export default {
       mouseScreenPoint.y = event.clientY - rect.top;
 
       if (mesh.isDimension || mesh.isCoordinate) {
+        if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
+        this.moving = true;
+
         const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint);
 
         this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
       } else if (mesh.isPanel) {
-        this.$store.dispatch('Panels/deletePanelConnections', this.id);
+        if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
         this.moving = true;
+
         if (magnetism) {
           /** MAGNETISM */
           this.$refs.vertices.showNearestVertices(mouseScreenPoint);
-          const closestVertex = this.$refs.vertices.closestVisibleVertex(mouseScreenPoint);
 
+          const closestVertex = this.$refs.vertices.closestVisibleVertex(mouseScreenPoint);
           if (closestVertex && this.$refs.vertices.magnetize(closestVertex.vertex, mouseScreenPoint)) return;
         } else {
           this.$refs.vertices.resetAllVerticesVisibility();
@@ -412,13 +457,23 @@ export default {
         this.moving = false;
       } else if (object3d.isPanel) {
         if (isSelected) {
+          const mouseScreenPoint = new Vector2();
+          const rect = this.vglNamespace.renderers[0].inst.domElement.getBoundingClientRect();
+          mouseScreenPoint.x = window.event.clientX - rect.left;
+          mouseScreenPoint.y = window.event.clientY - rect.top;
+
           this.$refs.vertices.setNearestVerticeVisible(this.hoveredObject3D);
-        } else {
+        } else if (!this.groupName || !window.groups[this.groupName].isSelected) {
           this.$refs.vertices.resetVerticesVisibility();
+          this.moving = false;
         }
-      } else this.$refs.vertices.resetVerticesVisibility();
+      } else {
+        this.$refs.vertices.resetVerticesVisibility();
+        this.moving = false;
+      }
     },
     setDragging(isSelected) {
+      if (!isSelected) this.$refs.vertices.resetAllVerticesVisibility();
       if (this.selectedObject3D.object3d.isCoordinate && isSelected) this.$refs.coordinate.select(this.selectedObject3D.object3d);
       else if (this.selectedObject3D.object3d.isDimension && isSelected) this.$refs.dimensions.select(this.selectedObject3D.object3d);
       else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
@@ -445,9 +500,10 @@ export default {
             currentBox.clone().intersect(box.clone()).getSize(size);
             const isBoxCollide = !Object.values(size).includes(0);
             if (isBoxCollide) window.panels[inst.name].setCollide(isBoxCollide);
+            if (window.panels[inst.name].getCollide() && checkOthers) window.panels[inst.name].updateColliding();
             return isColliding || isBoxCollide;
           }
-          if (window.panels[inst.name].getCollide && checkOthers) window.panels[inst.name].updateColliding();
+          if (window.panels[inst.name].getCollide() && checkOthers) window.panels[inst.name].updateColliding();
           return isColliding;
         }, false);
     },
@@ -455,12 +511,12 @@ export default {
   watch: {
     moving(isMoving, wasMoving) {
       if (isMoving && !wasMoving) {
-        if (this.relatedConnections.length) this.$store.dispatch('Panels/deletePanelConnections', this.id);
+        if (this.relatedConnections.length) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
       }
     },
     ptype(newType, oldType) {
       if (newType !== oldType) {
-        this.$store.dispatch('Panels/deletePanelConnections', this.id);
+        this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
       }
     },
     selectedObject3D: {

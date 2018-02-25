@@ -27,6 +27,10 @@ export default {
       type: String,
       required: true,
     },
+    plankPoints: {
+      type: Array,
+      required: false,
+    },
   },
   data() {
     return {
@@ -34,6 +38,8 @@ export default {
       leftElement: null,
       rightElement: null,
       baseElement: null,
+      cutHElement: null,
+      cutVElement: null,
       containerElement: null,
     };
   },
@@ -131,6 +137,26 @@ export default {
       const vectorBase2D = this.projectVectorTo2D(basePosition.x, basePosition.y, basePosition.z);
       this.baseElement.style.top = `${vectorBase2D.y}px`;
       this.baseElement.style.left = `${vectorBase2D.x}px`;
+
+      if (this.plankPoints) {
+        const cutHPosition = new Vector3(
+          this.plankPosition.x,
+          this.plankPosition.y - this.plankDimension.height / 2 + this.plankPoints[3][1] * 10,
+          this.plankPosition.z - this.plankDimension.depth / 2 + (this.plankPoints[3][0] + this.plankPoints[4][0]) * 5,
+        );
+        const vectorCutH2D = this.projectVectorTo2D(cutHPosition.x, cutHPosition.y, cutHPosition.z);
+        this.cutHElement.style.top = `${vectorCutH2D.y}px`;
+        this.cutHElement.style.left = `${vectorCutH2D.x}px`;
+
+        const cutVPosition = new Vector3(
+          this.plankPosition.x,
+          this.plankPosition.y - this.plankDimension.height / 2 + (this.plankPoints[4][1] + this.plankPoints[5][1]) * 5,
+          this.plankPosition.z - this.plankDimension.depth / 2 + this.plankPoints[4][0] * 10,
+        );
+        const vectorCutV2D = this.projectVectorTo2D(cutVPosition.x, cutVPosition.y, cutVPosition.z);
+        this.cutVElement.style.top = `${vectorCutV2D.y}px`;
+        this.cutVElement.style.left = `${vectorCutV2D.x}px`;
+      }
     },
     addElementsToDOM() {
       const appDiv = document.getElementById('content-3d');
@@ -144,10 +170,20 @@ export default {
       this.rightElement.value = this.initElement('right');
       this.baseElement = this.createSelect();
       this.baseElement.value = this.initElement('base');
+      if (this.plankPoints) {
+        this.cutHElement = this.createSelect();
+        this.cutHElement.value = this.initElement('cutH');
+        this.cutVElement = this.createSelect();
+        this.cutVElement.value = this.initElement('cutV');
+      }
       container.appendChild(this.topElement);
       container.appendChild(this.leftElement);
       container.appendChild(this.rightElement);
       container.appendChild(this.baseElement);
+      if (this.plankPoints) {
+        container.appendChild(this.cutHElement);
+        container.appendChild(this.cutVElement);
+      }
       this.containerElement = container;
       appDiv.insertBefore(container, appDiv.firstChild);
     },
@@ -175,7 +211,7 @@ export default {
             case 'FP':
               return this.edges[0];
             case 'VDP':
-              return this.edges[2];
+              return this.edges[this.plankPoints ? 0 : 2];
             default:
               return '0';
           }
@@ -186,7 +222,7 @@ export default {
             case 'FP':
               return this.edges[2];
             case 'VDP':
-              return this.edges[0];
+              return this.edges[this.plankPoints ? 2 : 0];
             default:
               return '0';
           }
@@ -197,10 +233,14 @@ export default {
             case 'FP':
               return this.edges[1];
             case 'VDP':
-              return this.edges[3];
+              return this.edges[this.plankPoints ? 5 : 3];
             default:
               return '0';
           }
+        case 'cutH':
+          return this.edges[3];
+        case 'cutV':
+          return this.edges[4];
         default:
           return '0';
       }
@@ -234,7 +274,7 @@ export default {
               newEdges[0] = value;
               break;
             case 'VDP':
-              newEdges[2] = value;
+              newEdges[this.plankPoints ? 0 : 2] = value;
               break;
             default:
               break;
@@ -249,7 +289,7 @@ export default {
               newEdges[2] = value;
               break;
             case 'VDP':
-              newEdges[0] = value;
+              newEdges[this.plankPoints ? 2 : 0] = value;
               break;
             default:
               break;
@@ -264,11 +304,17 @@ export default {
               newEdges[1] = value;
               break;
             case 'VDP':
-              newEdges[3] = value;
+              newEdges[this.plankPoints ? 5 : 3] = value;
               break;
             default:
               break;
           }
+          break;
+        case 'cutH':
+          newEdges[3] = value;
+          break;
+        case 'cutV':
+          newEdges[4] = value;
           break;
         default:
           break;
@@ -281,17 +327,27 @@ export default {
       const handleLeftChange = (val => self.onChange('left', val));
       const handleRightChange = (val => self.onChange('right', val));
       const handleBaseChange = (val => self.onChange('base', val));
+      const handleCutHChange = (val => self.onChange('cutH', val));
+      const handleCutVChange = (val => self.onChange('cutV', val));
 
       if (bool) {
         this.topElement.addEventListener('change', handleTopChange);
         this.leftElement.addEventListener('change', handleLeftChange);
         this.rightElement.addEventListener('change', handleRightChange);
         this.baseElement.addEventListener('change', handleBaseChange);
+        if (this.plankPoints) {
+          this.cutHElement.addEventListener('change', handleCutHChange);
+          this.cutVElement.addEventListener('change', handleCutVChange);
+        }
       } else {
         this.topElement.removeEventListener('change', handleTopChange);
         this.leftElement.removeEventListener('change', handleLeftChange);
         this.rightElement.removeEventListener('change', handleRightChange);
         this.baseElement.removeEventListener('change', handleBaseChange);
+        if (this.plankPoints) {
+          this.cutHElement.removeEventListener('change', handleCutHChange);
+          this.cutVElement.removeEventListener('change', handleCutVChange);
+        }
       }
     },
   },

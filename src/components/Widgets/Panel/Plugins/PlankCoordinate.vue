@@ -4,11 +4,9 @@
       v-for="(arrow, index) in stringifyArrows" :key="arrow.name + index"
       ref="arrows"
       v-bind="arrow"
-      :visible="visible"
       :head-length="arrowHeadLength"
       :head-width="arrowHeadWidth"
-      :linewidth = 10>
-    </vgl-arrow-helper>
+      :linewidth = 10 />
   </div>
 </template>
 
@@ -32,7 +30,7 @@ export default {
       type: Object,
       required: true,
     },
-    visible: {
+    isGroupArrow: {
       type: Boolean,
       default: false,
     },
@@ -150,6 +148,7 @@ export default {
       if (arrows == null) return;
       for (let i = 0; i < arrows.length; i += 1) {
         arrows[i].inst.isCoordinate = true;
+        if (this.isGroupArrow) arrows[i].inst.isGroupArrow = true;
         for (let ii = 0; ii < arrows[i].inst.children.length; ii += 1) {
           arrows[i].inst.children[ii].name = arrows[i].inst.name;
           arrows[i].inst.children[ii].isCoordinate = true;

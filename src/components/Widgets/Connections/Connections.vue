@@ -18,6 +18,9 @@ export default {
     ...mapState('Panels', [
       'connections',
     ]),
+    ...mapState('Camera', [
+      'selectedObject3D',
+    ]),
   },
   methods: {
     getFemalePanelName(current, browsing, intersectionCenter) {
@@ -62,49 +65,58 @@ export default {
     },
     generateDefaultConnections() {
       const panels = Object.values(window.panels).map(p => p.$refs.panel.inst);
-      const defaultConnections = new Array(1000);
-      let conni = 0;
-      for (let i = 0; i < panels.length - 1; i += 1) {
-        const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
-        currentPanel.updateMatrixWorld();
-        currentPanel.geometry.computeBoundingBox();
-        const currentBB = currentPanel.geometry.boundingBox.clone();
-        currentBB.setFromObject(currentPanel);
+      let defaultConnections = [];
+      const selectedObject = this.selectedObject3D ? this.selectedObject3D.object3d : null;
+      let selectedIDs = null;
 
-        for (let y = i + 1; y < panels.length; y += 1) {
-          const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
-          browsingPanel.updateMatrixWorld();
-          browsingPanel.geometry.computeBoundingBox();
-          const browsingBB = browsingPanel.geometry.boundingBox.clone();
-          browsingBB.setFromObject(browsingPanel);
+      if (selectedObject) selectedIDs = selectedObject.isGroup ? window.groups[selectedObject.name].getChildPanelIDs() : [selectedObject.name.split('_')[0]];
+      if (selectedIDs) {
+        defaultConnections = this.connections.filter(c => (selectedIDs.includes(c.p1) && selectedIDs.includes(c.p2)) || !selectedIDs.map(id => c.containsPanel(id)).includes(true));
+      }
 
-          if (browsingBB.intersectsBox(currentBB)) {
-            // get intersect of the two boundingBox (don't forget to clone currentBB before intersect)
-            const intersectBB = currentBB.clone().intersect(browsingBB);
-            const intersectCenter = new Vector3();
-            intersectBB.getCenter(intersectCenter);
-            const isize = new Vector3();
-            intersectBB.getSize(isize);
+      for (let i = 0; i < panels.length; i += 1) {
+        if (!selectedIDs || selectedIDs.includes(panels[i].name)) {
+          const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
+          currentPanel.updateMatrixWorld();
+          currentPanel.geometry.computeBoundingBox();
+          const currentBB = currentPanel.geometry.boundingBox.clone();
+          currentBB.setFromObject(currentPanel);
 
-            // determine which Panel is P2
-            const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
-            const newConnection = new Connection({
-              p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
-              p2: p2name,
-              center: intersectCenter,
-              ilength: Math.max(...isize.toArray()),
-            });
-            if (this.$store.state.User.isAdesigner && this.init) {
-              newConnection.setAsFreeConnection(); // black
-            } else {
-              newConnection.setAsUndefinedConnection(); // red
+          for (let y = 0; y < panels.length; y += 1) {
+            if (i !== y) {
+              const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
+              browsingPanel.updateMatrixWorld();
+              browsingPanel.geometry.computeBoundingBox();
+              const browsingBB = browsingPanel.geometry.boundingBox.clone();
+              browsingBB.setFromObject(browsingPanel);
+
+              if (browsingBB.intersectsBox(currentBB)) {
+                // get intersect of the two boundingBox (don't forget to clone currentBB before intersect)
+                const intersectBB = currentBB.clone().intersect(browsingBB);
+                const intersectCenter = new Vector3();
+                intersectBB.getCenter(intersectCenter);
+                const isize = new Vector3();
+                intersectBB.getSize(isize);
+
+                // determine which Panel is P2
+                const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
+                const newConnection = new Connection({
+                  p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
+                  p2: p2name,
+                  center: intersectCenter,
+                  ilength: Math.max(...isize.toArray()),
+                });
+                if (this.$store.state.User.isAdesigner && this.init) {
+                  newConnection.setAsFreeConnection(); // black
+                } else {
+                  newConnection.setAsUndefinedConnection(); // red
+                }
+                defaultConnections.push(newConnection);
+              }
             }
-            defaultConnections[conni] = newConnection;
-            conni += 1;
           }
         }
       }
-      defaultConnections.length = conni;
       this.init = false;
       return defaultConnections;
     },

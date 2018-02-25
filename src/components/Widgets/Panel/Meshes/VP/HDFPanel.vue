@@ -15,6 +15,20 @@ export default {
     };
   },
   computed: {
+    hdfPhysicalDimensions() {
+      return {
+        width: this.dimensionsByType.width + (this.hasFeuillure.left ? this.dimensionsMarginLeft : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight : 0),
+        height: this.dimensionsByType.height + (this.hasFeuillure.top ? this.dimensionsMarginTop : 0) + (this.hasFeuillure.bottom ? this.dimensionsMarginBottom : 0),
+        depth: this.dimensionsByType.depth + 5,
+      };
+    },
+    hdfPhysicalPosition() {
+      return {
+        x: this.fixedPosition.x - (this.hasFeuillure.left ? this.dimensionsMarginLeft / 2 : 0) + (this.hasFeuillure.right ? this.dimensionsMarginRight / 2 : 0),
+        y: this.fixedPosition.y - (this.hasFeuillure.bottom ? this.dimensionsMarginBottom / 2 : 0) + (this.hasFeuillure.top ? this.dimensionsMarginTop / 2 : 0),
+        z: this.fixedPosition.z,
+      };
+    },
     fixedPosition: {
       get() {
         const { left, bottom } = this.hasFeuillure;
@@ -69,6 +83,7 @@ export default {
       return true;
     },
     materials() {
+      if (!this.edges) return null;
       const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
       return [
         formattedEdges[1] ? this.material.toString() : 'raw',
@@ -92,7 +107,8 @@ export default {
         if (currentConnection.isHDFConnection) {
           // is left, right, top or bottom connection
           const { p1, p2 } = currentConnection;
-          const cPanel = (p1.toString() !== this.id ? window.panels[p1] : window.panels[p2]);
+          const cPanel = (p1.toString() !== this.id ? window.panels[p1.toString()] : window.panels[p2.toString()]);
+          if (!cPanel) return;
           const { x: cx, y: cy } = cPanel.position;
           const cType = cPanel.ptype;
 

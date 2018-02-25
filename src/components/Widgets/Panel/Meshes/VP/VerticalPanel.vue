@@ -18,6 +18,7 @@ export default {
       },
     },
     materials() {
+      if (!this.edges) return null;
       const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
       if (this.collide) return 'red';
       return [

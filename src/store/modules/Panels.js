@@ -9,6 +9,7 @@ import Connection from '../../components/Widgets/Connections/Models/Connection';
 
 const state = {
   panels: [],
+  groups: [],
   connections: [],
   panelsHistory: [],
   layers: [],
@@ -37,9 +38,32 @@ const getters = {
   isMaterialInPanel: s => id => s.panels.some(p => p.material === String(id)),
   serialize: (s, g, rootState) => {
     const { panels } = s;
+    const { groups } = s;
+
+    const newPanels = panels.map((p) => {
+      const panel = p;
+      const { resizable } = panel;
+      // delete panel.groupName;
+      // delete panel.groupType;
+      // delete panel.resizable;
+      // if (panel.layer === 'Structure') delete panel.layer;
+      return {
+        ...panel,
+        x: panel.x,
+        y: panel.y,
+        thick: panel.thick,
+        ptype: resizable ? panel.ptype : `Hard-${panel.ptype}`,
+        name: panel.name,
+        pos: panel.pos,
+        material: panel.material,
+        id: panel.id,
+      };
+    });
+    groups.forEach(group => newPanels.push(group));
+
     const { materials } = rootState.materials;
     return {
-      rlist: panels,
+      rlist: newPanels,
       connlist: g.serializeConnections,
       materials,
       modele: 'VglDesigner',
@@ -50,8 +74,28 @@ const getters = {
 
 const mutations = {
   setPanels(s, panels) {
-    s.panels = panels.map(p => ({ ...p, id: p.id.split('-')[0], material: p.material.toString() }));
-    s.panels = s.panels.map(p => (p.layer ? p : { ...p, layer: 'Structure' }));
+    s.panels = [];
+    s.groups = [];
+    panels.forEach((p) => {
+      if (p.ptype === 'group_stddrawer') {
+        s.groups.push(p);
+        p.rlist.forEach((groupP) => {
+          const panelIndex = s.panels.findIndex(panel => panel.id === groupP.id.split('-')[0]);
+          s.panels[panelIndex].groupName = p.name;
+          s.panels[panelIndex].groupType = p.ptype;
+        });
+      } else {
+        const resizable = !p.ptype.includes('Hard');
+        s.panels.push({
+          ...p,
+          ptype: resizable ? p.ptype : p.ptype.split('-')[1],
+          id: p.id.split('-')[0],
+          material: p.material.toString(),
+          layer: p.layer ? p.layer : 'Structure',
+          resizable,
+        });
+      }
+    });
   },
   addPanel(s, p) {
     Vue.set(s.panels, s.panels.length, {
@@ -59,6 +103,7 @@ const mutations = {
       id: p.id.split('-')[0],
       material: p.material.toString(),
       layer: 'Structure',
+      resizable: true,
     });
   },
   setLayers(s, data) {
@@ -83,21 +128,19 @@ const mutations = {
         dimensions.makeValid(key);
         newData = dimensions[key];
       }
+    } else if (key === 'ptype') {
+      this.dispatch('Panels/deletePanelConnections', { id: s.panels[index].id });
     }
 
     Vue.set(s.panels[index], key, newData);
   },
-  movePanel(s) {
-    s.enableMoving = true;
-    s.enableResizing = false;
-  },
-  resizePanel(s) {
-    s.enableMoving = false;
-    s.enableResizing = true;
-  },
   deletePanel(s, id) {
     const index = s.panels.findIndex(p => String(p.id) === String(id));
     if (index >= 0) Vue.delete(s.panels, index);
+  },
+  deleteGroup(s, name) {
+    const index = s.groups.findIndex(group => group.name === name);
+    if (index >= 0) Vue.delete(s.groups, index);
   },
   enableMoving(s, isEnable = true) {
     s.enableMoving = isEnable;
@@ -106,13 +149,9 @@ const mutations = {
     s.enableResizing = isEnable;
   },
   setConnections(s, data) {
+    s.connections = null;
     if (data.connlist && data.createNew) {
-      s.connections = data.connlist.map((c) => {
-        const index = s.connections.findIndex(conn => (conn.p1 === c.p1 && conn.p2 === c.p2) || (conn.p1 === c.p2 && conn.p2 === c.p1));
-        const panel1 = s.panels.find(panel => panel.id === c.p1.toString());
-        const panel2 = s.panels.find(panel => panel.id === c.p2.toString());
-        return (index < 0 && (panel1.thick === 4 || panel2.thick === 4) ? new Connection({ ...c, type: 'hdfgrove' }) : new Connection(c));
-      });
+      s.connections = data.connlist.map((c) => new Connection(c));
     } else {
       s.connections = data.connlist;
     }
@@ -120,15 +159,13 @@ const mutations = {
     for (let i = 0; i < s.connections.length; i += 1) {
       if (s.connections[i].type === 'hinged') {
         const c = s.connections[i];
-        const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
-                                                              && conn.type !== 'undefined' && conn.type !== 'free');
-        const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
-                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+        const p1HasRealConnection = s.connections.some(conn => c.p1Neighbour(conn) && conn.isRealConnection);
+        const p2HasRealConnection = s.connections.some(conn => c.p2Neighbour(conn) && conn.isRealConnection);
 
         if (p1HasRealConnection && !p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
+            if (c.p2Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
@@ -136,11 +173,14 @@ const mutations = {
         } else if (!p1HasRealConnection && p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
+            if (c.p1Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
         } else s.connections[i] = new Connection({ ...s.connections[i], type: 'undefined' });
+      } else if (s.panels.find(panel => panel.id === s.connections[i].p1.toString()).thick === 4
+              || s.panels.find(panel => panel.id === s.connections[i].p2.toString()).thick === 4) {
+        s.connections[i] = new Connection({ ...s.connections[i], type: 'hdfgrove' });
       }
     }
   },
@@ -148,58 +188,31 @@ const mutations = {
     Vue.set(s.connections, s.connections.length, new Connection(connection));
   },
   updateConnection(s, { index = -1, value }) {
-    if (index < 0) return;
-    Vue.set(s.connections, index, new Connection(value));
-
-    if (value.type === 'hinged') {
-      const c = s.connections[index];
-      const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
-                                                            && (conn.type !== 'undefined' && conn.type !== 'free' && conn.type !== 'hinged'));
-      const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
-                                                            && (conn.type !== 'undefined' && conn.type !== 'free' && conn.type !== 'hinged'));
-
-      if (p1HasRealConnection && !p2HasRealConnection) {
-        for (let conni = 0; conni < s.connections.length; conni += 1) {
-          const conn = s.connections[conni];
-          if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
-            s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
-          }
-        }
-        s.connections[index] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
-      } else if (!p1HasRealConnection) {
-        for (let conni = 0; conni < s.connections.length; conni += 1) {
-          const conn = s.connections[conni];
-          if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
-            s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
-          }
-        }
-      } else s.connections[index] = new Connection({ ...s.connections[index], type: 'undefined' });
-    }
+    if (index >= 0) Vue.set(s.connections, index, new Connection(value));
 
     for (let i = 0; i < s.connections.length; i += 1) {
-      if (s.connections[i].type === 'hinged') {
-        const c = s.connections[i];
-        const p1HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2))
-                                                              && conn.type !== 'undefined' && conn.type !== 'free');
-        const p2HasRealConnection = s.connections.some(conn => ((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1))
-                                                              && conn.type !== 'undefined' && conn.type !== 'free');
+      const connIndex = (index + i) % s.connections.length;
+      if (s.connections[connIndex].type === 'hinged') {
+        const c = s.connections[connIndex];
+        const p1HasRealConnection = s.connections.some(conn => c.p1Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
+        const p2HasRealConnection = s.connections.some(conn => c.p2Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
 
         if (p1HasRealConnection && !p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (((conn.p1 === c.p2 && conn.p2 !== c.p1) || (conn.p2 === c.p2 && conn.p1 !== c.p1)) && conn.type !== 'hdfgrove') {
+            if (c.p2Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
-          s.connections[i] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
+          s.connections[connIndex] = new Connection({ ...c, p1: c.p2, p2: c.p1 });
         } else if (!p1HasRealConnection && p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (((conn.p1 === c.p1 && conn.p2 !== c.p2) || (conn.p2 === c.p1 && conn.p1 !== c.p2)) && conn.type !== 'hdfgrove') {
+            if (c.p1Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
-        } else s.connections[i] = new Connection({ ...s.connections[i], type: 'undefined' });
+        } else s.connections[connIndex] = new Connection({ ...s.connections[connIndex], type: 'undefined' });
       }
     }
   },
@@ -269,20 +282,36 @@ const actions = {
       }
     });
   },
-  deletePanelConnections(context, id) {
+  deletePanelConnections(context, { id, exceptPanelIDs = null }) {
     // delete every connections related to the ID panel
     const { state: s, commit } = context;
     const idStr = id.toString();
-    const panelConnections = s.connections
-      .filter(e => e.p1.toString() === idStr || e.p2.toString() === idStr);
+    let panelConnections;
+    if (exceptPanelIDs) {
+      panelConnections = s.connections.filter(e => (e.p1.toString() === idStr && !exceptPanelIDs.includes(e.p2.toString())) || (e.p2.toString() === idStr && !exceptPanelIDs.includes(e.p1.toString())));
+    } else {
+      panelConnections = s.connections.filter(e => e.p1.toString() === idStr || e.p2.toString() === idStr);
+    }
+
     panelConnections.forEach(c => commit('deleteConnection', c));
   },
   deletePanel(context, id) {
     // deleting panels means also removing related connections
     return new Promise(async (resolve, reject) => {
       try {
-        await context.dispatch('deletePanelConnections', id);
+        await context.dispatch('deletePanelConnections', { id });
         context.commit('deletePanel', id);
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+  deleteGroup(context, name) {
+    // deleting panels means also removing related connections
+    return new Promise(async (resolve, reject) => {
+      try {
+        context.commit('deleteGroup', name);
         resolve();
       } catch (e) {
         reject(e);

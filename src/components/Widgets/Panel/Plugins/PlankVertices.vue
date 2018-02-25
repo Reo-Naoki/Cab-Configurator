@@ -1,10 +1,14 @@
 <template>
   <vgl-group>
     <div v-for="(vertex, index) in vertices" :key="`${vertex.name}(${index})`">
-      <vgl-sphere-geometry :name="`${vertex.name}vertex-geometry${index}`" :radius="vertex.visible ? sizeByDistanceToCamera(vertex.position) : 0"></vgl-sphere-geometry>
-      <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry${index}`"
-                v-bind="vertex">
-      </vgl-mesh>
+      <div v-if="vertex.visible">
+        <vgl-sphere-geometry
+          :name="`${vertex.name}vertex-geometry${index}`"
+          :radius="sizeByDistanceToCamera(vertex.position)"
+          :width-segments="6"
+          :height-segments="6" />
+        <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry${index}`" v-bind="vertex" />
+      </div>
     </div>
   </vgl-group>
 </template>
@@ -40,7 +44,6 @@ export default {
     },
   },
   mounted() {
-    this.setAsPlankVertice();
     EventBus.$on('vertices', this.setVertexVisibility);
     EventBus.$on('vertices-near', this.handlerVerticesNear);
     EventBus.$on('vertices-reset', this.resetVerticesVisibility);
@@ -168,14 +171,25 @@ export default {
       return this.vglNamespace.cameras.camera1;
     },
   },
+  updated() {
+    this.setAsPlankVertice();
+  },
   methods: {
-    verticesInWorld(isOnlyVisible = true) {
+    verticesInWorld() {
       const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
       return Object.values(others)
         .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
         .flatMap(c => c.$refs.vertices.$refs.vertices) // flatMap and get a list of every vgl-mesh vertex components
         .map(c => (c ? c.inst : {})) // get only ThreeJS instance of those component
-        .filter(inst => !isOnlyVisible || inst.visible); // get only visible vertices
+        .filter(inst => inst.visible); // get only visible vertices
+    },
+    otherVertices(exceptPanels = null) {
+      const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
+      const optherPanels = exceptPanels ? Object.values(others).filter(panel => !exceptPanels.includes(panel.id)) : Object.values(others);
+      return optherPanels
+        .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
+        .flatMap(c => c.$refs.vertices.vertices) // flatMap and get a list of every vgl-mesh vertex components
+        .map(c => c); // get only ThreeJS instance of those component
     },
     sizeByDistanceToCamera(vertexPosition) {
       const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
@@ -220,7 +234,7 @@ export default {
         const [x, y, z] = v.position.split(' ').map(pos => parseInt(pos, 10));
         const distance = mouse
           ? mouse.distanceTo(this.projectVectorTo2D(x, y, z))
-          : this.plankPosition.clone().add(hoveredObject3D.pointOffset).distanceTo(new Vector3(x, y, z));
+          : hoveredObject3D.point.distanceTo(new Vector3(x, y, z));
 
         if (distance < nearestRange) {
           this.resetVerticesVisibility();
@@ -443,7 +457,9 @@ export default {
       // if (direction) return this.magnetismRulesDirection({ side, type }, this.plankType, direction);
       return this.magnetismRules({ side, type }, this.plankType);
     },
-    handlerVerticesNear(activeVertex, plankType, direction, mouse) {
+    handlerVerticesNear(activeVertex, plankType, direction, mouse, exceptPanels = null) {
+      if (exceptPanels && exceptPanels.includes(this.plankName)) return;
+
       const { side, name, position } = activeVertex;
 
       // forbid the active vertex to trigger it's own plank vertices
@@ -496,17 +512,19 @@ export default {
       }
       return false;
     },
-    getNearestVerticeInWorld(mouse) {
+    getNearestVerticeInWorld(mouse, exceptPanels = null) {
+      // safety reset for vertices visibility
       this.resetVerticesVisibility();
 
-      const nearestVertex = this.verticesInWorld(false).reduce((acc, current) => {
-        const currentVector = this.projectVectorTo2D(current.position.x, current.position.y, current.position.z);
+      const nearestVertex = this.otherVertices(exceptPanels).reduce((acc, current) => {
+        const [x, y, z] = current.position.split(' ').map(v => parseInt(v, 10));
+        const currentVector = this.projectVectorTo2D(x, y, z);
         const currentDistance = mouse.distanceTo(currentVector);
         if (acc == null && currentDistance) {
-          return currentDistance <= this.nearRange ? { vertex: current, distance: currentDistance } : null;
+          return currentDistance <= this.nearRange ? { vertex: { name: current.name, position: { x, y, z } }, distance: currentDistance } : null;
         }
         const { distance } = acc;
-        return currentDistance < distance ? { vertex: current, distance: currentDistance } : acc;
+        return currentDistance < distance ? { vertex: { name: current.name, position: { x, y, z } }, distance: currentDistance } : acc;
       }, null);
 
       if (nearestVertex) {
@@ -516,12 +534,12 @@ export default {
 
       return null;
     },
-    showNearestVertices(mouse) {
+    showNearestVertices(mouse, exceptPanels = null) {
       const [activeVertex] = this.activeVertices;
       if (!activeVertex) return;
-      EventBus.$emit('vertices-near', activeVertex, this.plankType, null, mouse);
+      EventBus.$emit('vertices-near', activeVertex, this.plankType, null, mouse, exceptPanels);
     },
-    magnetize(targetVertex, mouse) {
+    magnetize(targetVertex, mouse, siblingPanels = null) {
       const { x: tx, y: ty, z: tz } = targetVertex.position;
       const targetVector = new Vector3(tx, ty, tz);
       const targetVector2D = this.projectVectorTo2D(targetVector.x, targetVector.y, targetVector.z);
@@ -532,7 +550,13 @@ export default {
       const [ax, ay, az] = activeVertex.position.split(' ').map(v => parseFloat(v, 10));
 
       if (mouse.distanceTo(targetVector2D) <= this.magnetRange) {
-        this.position = this.position.clone().add(new Vector3(tx - ax, ty - ay, tz - az));
+        const offset = new Vector3(tx - ax, ty - ay, tz - az);
+        this.position = this.position.clone().add(offset);
+        if (siblingPanels) {
+          siblingPanels.forEach((panel) => {
+            window.panels[panel].$refs.vertices.position = window.panels[panel].$refs.vertices.position.clone().add(offset);
+          });
+        }
         return true;
       }
       return false;

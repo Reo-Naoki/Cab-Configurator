@@ -17,6 +17,7 @@ export default {
     EventBus.$on('save', this.save);
     EventBus.$on('undo', this.undo);
     EventBus.$on('redo', this.redo);
+    EventBus.$on('cancel', this.cancel);
     EventBus.$on('saveAndReset', this.saveAndReset);
   },
   methods: {
@@ -36,11 +37,19 @@ export default {
       await this.$store.dispatch('Panels/deserialize', this.history[this.index]);
       this.busy = false;
     },
+    async cancel() {
+      if (this.busy) return;
+      if (this.index < 0 || this.index > this.history.length - 1) return;
+      this.busy = true;
+      await this.$store.dispatch('Panels/deserialize', this.history[this.index]);
+      this.busy = false;
+    },
     resetIndex(index = this.history.length - 1) {
       this.index = index;
       return index;
     },
     save() {
+      this.history.splice(this.index + 1);
       this.history.push(JSON.parse(JSON.stringify(this.$store.getters['Panels/serialize'])));
       this.resetIndex();
     },

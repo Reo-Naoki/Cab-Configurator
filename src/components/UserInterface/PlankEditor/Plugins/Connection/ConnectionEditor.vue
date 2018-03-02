@@ -63,6 +63,7 @@ export default {
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
+      'prevSelectedObject3D',
     ]),
     selectedConnection() {
       if (!this.selectedObject3D || !this.selectedObject3D.object3d) return null;
@@ -89,7 +90,8 @@ export default {
   methods: {
     unselect(closeDialog = () => {}) {
       closeDialog(true);
-      this.$store.commit('Camera/selectObject3D');
+      if (this.prevSelectedObject3D) this.$store.commit('Camera/selectObject3D', { object3d: this.prevSelectedObject3D.object3d });
+      else this.$store.commit('Camera/selectObject3D');
       this.newConnection = null;
     },
     applyConnection() {

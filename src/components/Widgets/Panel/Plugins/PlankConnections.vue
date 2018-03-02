@@ -9,10 +9,8 @@
       name="bubble_big" :radius="400"
       :width-segments="6"
       :height-segments="6" />
-    <div v-for="(connection, index) in bubbles" :key="`${plankID}_connection_${index}`">
-      <vgl-mesh v-for="(connection, index) in bubbles"
-                :key="`bubble_${plankID}_${connection.center.x}_${connection.center.y}_${connection.center.z}_${connection.type || 'default'}_${index}`"
-                :geometry="(connection.ilength >= 6000 && connection.type === undefined) ? 'bubble_small' : 'bubble_big'"
+    <div v-for="(connection, index) in bubbles" :key="`bubble_${plankID}_${connection.center.x}_${connection.center.y}_${connection.center.z}_${connection.type || 'default'}_${index}`">
+      <vgl-mesh :geometry="(connection.ilength >= 6000 && connection.type === undefined) ? 'bubble_small' : 'bubble_big'"
                 :material="connection.material"
                 :position="`${connection.center.x} ${connection.center.y} ${connection.center.z}`"
                 :name="`bubble_${plankID}_${connection.p2}`"
@@ -22,6 +20,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
+
 export default {
   name: 'PlankConnections',
   props: {
@@ -39,8 +39,36 @@ export default {
     },
   },
   computed: {
+    ...mapState('Camera', [
+      'selectedObject3D',
+    ]),
     connectionsWherePanelIsP1() {
-      return this.connections.filter(c => c.p1 === Number(this.plankID)).filter(c => !window.panels[c.p1].groupName || !window.groups[window.panels[c.p1].groupName].moving);
+      return this.connections.filter(c => c.p1 === Number(this.plankID))
+        .filter((c) => {
+          if (this.selectedObject3D) {
+            const selectedObject = this.selectedObject3D.object3d;
+            let selectedGroupName = null;
+            if (selectedObject.isConnectionBubble) {
+              selectedGroupName = window.panels[selectedObject.name.split('_')[1]].groupName;
+            } else if (!selectedObject.isGroup && !selectedObject.isGroupArrow) {
+              selectedGroupName = window.panels[selectedObject.name.split('_')[0]].groupName;
+            } else if (selectedObject.isGroup) {
+              selectedGroupName = window.groups[selectedObject.name].groupName;
+            } else if (selectedObject.isGroupArrow) {
+              const id = selectedObject.isCoordinate ? selectedObject.name.split('_coordinate')[0] : selectedObject.name.split('_dimensions')[0];
+              selectedGroupName = window.groups[id].groupName;
+            }
+            if (selectedGroupName) {
+              return (window.panels[c.p1].groupName === selectedGroupName
+                  && window.panels[c.p2].groupName === selectedGroupName);
+            }
+          }
+
+          const p1GroupName = window.panels[c.p1].topGroupName;
+          const p2GroupName = window.panels[c.p2].topGroupName;
+
+          return (!(p1GroupName && p2GroupName) || (p1GroupName !== p2GroupName));
+        });
     },
     bubbles() {
       return this.connectionsWherePanelIsP1.map(c => {

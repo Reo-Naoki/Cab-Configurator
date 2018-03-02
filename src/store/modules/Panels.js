@@ -15,6 +15,7 @@ const state = {
   layers: [],
   enableMoving: false,
   enableResizing: false,
+  moveDirection: null,
   price: '---',
   prevPosition: null,
   prevDimension: null,
@@ -77,14 +78,7 @@ const mutations = {
     s.panels = [];
     s.groups = [];
     panels.forEach((p) => {
-      if (p.ptype === 'group_stddrawer') {
-        s.groups.push(p);
-        p.rlist.forEach((groupP) => {
-          const panelIndex = s.panels.findIndex(panel => panel.id === groupP.id.split('-')[0]);
-          s.panels[panelIndex].groupName = p.name;
-          s.panels[panelIndex].groupType = p.ptype;
-        });
-      } else {
+      if (p.ptype !== 'group_stddrawer') {
         const resizable = !p.ptype.includes('Hard');
         s.panels.push({
           ...p,
@@ -94,6 +88,36 @@ const mutations = {
           layer: p.layer ? p.layer : 'Structure',
           resizable,
         });
+      }
+    });
+    panels.forEach((p) => {
+      if (p.ptype === 'group_stddrawer') {
+        s.groups.push({ ...p, resizable: true });
+      }
+    });
+    panels.forEach((p) => {
+      if (p.ptype === 'group_stddrawer') {
+        let groupChildCount = 0;
+        let panelChildCount = 0;
+
+        p.rlist.forEach((list) => {
+          if (list.ptype === 'group_stddrawer') {
+            const groupIndex = s.groups.findIndex(group => group.name === list.name);
+            s.groups[groupIndex].groupName = p.name;
+            s.groups[groupIndex].groupType = p.ptype;
+            groupChildCount += 1;
+          } else {
+            const panelIndex = s.panels.findIndex(panel => panel.id === list.id.split('-')[0]);
+            s.panels[panelIndex].groupName = p.name;
+            s.panels[panelIndex].groupType = p.ptype;
+            panelChildCount += 1;
+          }
+        });
+
+        if ((groupChildCount > 0) && (groupChildCount + panelChildCount > 1)) {
+          const groupIndex = s.groups.findIndex(group => group.name === p.name);
+          s.groups[groupIndex].resizable = false;
+        }
       }
     });
   },
@@ -132,21 +156,32 @@ const mutations = {
       this.dispatch('Panels/deletePanelConnections', { id: s.panels[index].id });
     }
 
-    Vue.set(s.panels[index], key, newData);
+    s.panels[index][key] = newData;
+    // Vue.set(s.panels[index], key, newData);
   },
-  deletePanel(s, id) {
+  deletePanel(s, { id, save = false }) {
     const index = s.panels.findIndex(p => String(p.id) === String(id));
-    if (index >= 0) Vue.delete(s.panels, index);
+    if (index >= 0) {
+      Vue.delete(s.panels, index);
+      if (save) EventBus.$emit('save');
+    }
   },
-  deleteGroup(s, name) {
+  deleteGroup(s, { name, save = false }) {
     const index = s.groups.findIndex(group => group.name === name);
-    if (index >= 0) Vue.delete(s.groups, index);
+    if (index >= 0) {
+      Vue.delete(s.groups, index);
+      if (save) EventBus.$emit('save');
+    }
   },
   enableMoving(s, isEnable = true) {
     s.enableMoving = isEnable;
+    s.moveDirection = null;
   },
   enableResizing(s, isEnable = true) {
     s.enableResizing = isEnable;
+  },
+  setMoveDirection(s, direction = null) {
+    s.moveDirection = direction;
   },
   setConnections(s, data) {
     s.connections = null;
@@ -249,6 +284,175 @@ const actions = {
       }
       context.commit('setPanels', rlist);
       context.commit('setConnections', { connlist, createNew: true });
+      resolve();
+    });
+  },
+  importRlist(context, data) {
+    // console.log = () => { };
+    // console.warn = () => { };
+    // console.error = () => { };
+    return new Promise(async (resolve) => {
+      // use on importing new cabinet
+      const serializedData = context.getters.serialize;
+      const panelIDs = serializedData.rlist.filter(list => list.ptype !== 'group_stddrawer').map(list => Number(list.id));
+      const panelPosXs = serializedData.rlist.filter(list => list.ptype !== 'group_stddrawer').map(list => list.pos[0]);
+      const materialIDs = serializedData.materials.map(material => Number(material.id));
+      const newStartPID = Math.max(...panelIDs) + 1;
+      const newStartPosX = Math.max(...panelPosXs);
+      const newStartMID = Math.max(...materialIDs) + 1;
+      const newRlist = serializedData.rlist;
+      const newConnlist = serializedData.connlist;
+      const newMaterials = serializedData.materials;
+      const newNameTable = {};
+
+      let newGroupIDs = [];
+      let newGroup = {};
+      let newGroupStartNID = -1;
+      let newGroupName = 'Cabinet';
+      let groupedPanels = [];
+      let isValid = false;
+
+      // Create group name table
+      newRlist.forEach((list) => {
+        if (list.ptype === 'group_stddrawer') {
+          const { name } = list;
+          newNameTable[name] = name;
+          list.rlist.filter(p => p.id).forEach(p => groupedPanels.push(p));
+        }
+      });
+
+      // Create name for new group of an existing cabinet
+      newGroupIDs = Object.values(newNameTable).map((value) => {
+        const id = Number(value.split('Cabinet')[1]);
+        if (id) return id;
+        return 0;
+      });
+      newGroupStartNID = newGroupIDs.length > 0 ? Math.max(...newGroupIDs) + 1 : -1;
+      newGroupName = newGroupStartNID > 0 ? (String('Cabinet') + newGroupStartNID) : 'Cabinet';
+      newNameTable[newGroupName] = newGroupName;
+
+      // Process creating new group data for an existing cabinet
+      newGroup = {};
+      newGroup.name = newGroupName;
+      newGroup.ptype = 'group_stddrawer';
+      newGroup.rlist = [];
+      isValid = false;
+      newRlist.forEach((list) => {
+        if (list.ptype === 'group_stddrawer') {
+          newGroup.rlist.push({ name: list.name, ptype: list.ptype });
+        } else if (!groupedPanels.find(panel => panel.id.split('-')[0] === list.id.split('-')[0])) {
+          newGroup.rlist.push(list);
+          isValid = true;
+        }
+      });
+      if (isValid) newRlist.push(newGroup);
+
+
+      // Get panels info from imported data
+      const {
+        rlist = [], connlist = [], materials = [], options = {},
+      } = data;
+
+      // Get groupedPanels of an imported cabinet
+      groupedPanels = [];
+      rlist.forEach((list) => {
+        if (list.ptype === 'group_stddrawer') {
+          list.rlist.filter(p => p.id).forEach(p => groupedPanels.push(p));
+        }
+      });
+
+      // Create name for new group of an imported cabinet
+      newGroupIDs = Object.values(newNameTable).map((value) => {
+        const id = Number(value.split('Cabinet')[1]);
+        if (id) return id;
+        return 0;
+      });
+      newGroupStartNID = newGroupIDs.length > 0 ? Math.max(...newGroupIDs) + 1 : -1;
+      newGroupName = newGroupStartNID > 0 ? (String('Cabinet') + newGroupStartNID) : 'Cabinet';
+      newNameTable[newGroupName] = newGroupName;
+
+      // Process creating new group data for an imported cabinet
+      newGroup = {};
+      newGroup.name = newGroupName;
+      newGroup.ptype = 'group_stddrawer';
+      newGroup.rlist = [];
+      isValid = false;
+      rlist.forEach((list) => {
+        if (list.ptype === 'group_stddrawer') {
+          newGroup.rlist.push({ name: list.name, ptype: list.ptype });
+        } else if (!groupedPanels.find(panel => panel.id.split('-')[0] === list.id.split('-')[0])) {
+          newGroup.rlist.push(list);
+          isValid = true;
+        }
+      });
+      if (isValid) rlist.push(newGroup);
+
+      // Process Panels of imported cabinet
+      rlist.forEach((p) => {
+        if (p.ptype !== 'group_stddrawer') {
+          newRlist.push({
+            ...p,
+            id: (Number(p.id.split('-')[0]) + newStartPID).toString(),
+            material: Number(p.material) > 0 ? (Number(p.material) + newStartMID).toString() : p.material,
+            pos: [p.pos[0] + newStartPosX + 500, p.pos[1], p.pos[2]],
+          });
+        }
+      });
+      // Process Renaming groups of imported cabinet
+      rlist.forEach((p) => {
+        if (p.ptype === 'group_stddrawer') {
+          const { name } = p;
+          const nameIDs = Object.values(newNameTable).map((value) => {
+            const id = Number(value.split(name)[1]);
+            if (id) return id;
+            return 0;
+          });
+          const newStartNID = nameIDs.length > 0 ? Math.max(...nameIDs) + 1 : -1;
+          newNameTable[name] = newStartNID > 0 ? (name + newStartNID) : name;
+        }
+      });
+      // Process Groups of imported cabinet
+      rlist.forEach((p) => {
+        if (p.ptype === 'group_stddrawer') {
+          newRlist.push({
+            ...p,
+            name: newNameTable[p.name],
+            rlist: p.rlist.map((groupP) => {
+              if (groupP.ptype === 'group_stddrawer') {
+                return {
+                  ...groupP,
+                  name: newNameTable[groupP.name],
+                };
+              }
+              return newRlist.find(list => list.id === (Number(groupP.id.split('-')[0]) + newStartPID).toString());
+            }),
+          });
+        }
+      });
+
+      // Process connections of imported cabinet
+      connlist.forEach((conn) => {
+        newConnlist.push({
+          ...conn,
+          p1: conn.p1 + newStartPID,
+          p2: conn.p2 + newStartPID,
+        });
+      });
+
+      // Process materials of imported cabinet
+      materials.forEach((material) => {
+        newMaterials.push({
+          ...material,
+          id: material.id > 0 ? material.id + newStartMID : material.id,
+        });
+      });
+
+      await context.dispatch('deserialize', {
+        rlist: newRlist,
+        connlist: newConnlist,
+        materials: newMaterials,
+        options,
+      }).then(() => EventBus.$emit('save'));
       resolve();
     });
   },

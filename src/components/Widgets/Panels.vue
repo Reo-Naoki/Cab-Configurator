@@ -35,6 +35,7 @@ import Connections from './Connections/Connections';
 
 export default {
   name: 'Panels',
+  inject: ['vglNamespace'],
   components: {
     Connections,
     Panel,
@@ -90,18 +91,33 @@ export default {
       const { name } = object3d;
 
       // console.log('click on Object3D', object3d);
-      if (object3d.isPanel) {
-        const selectedName = this.selectedObject3D && this.selectedObject3D.object3d.name;
-        const { groupName } = window.panels[name];
+      let groupName = null;
+      if (object3d.isPanel) ({ groupName } = window.panels[name]);
+      if (object3d.isGroup) ({ groupName } = window.groups[name]);
 
-        if ((selectedName === groupName && !this.enableMoving && !this.enableResizing)
-          || selectedName === name || !groupName) {
-          this.$store.commit('Camera/selectObject3D', { object3d });
+      if ((object3d.isPanel || object3d.isGroup) && groupName) {
+        const selectedName = this.selectedObject3D && this.selectedObject3D.object3d.name;
+        // let parentSelected = false;
+        let unselectedName = null;
+        if (this.selectedObject3D && object3d.isPanel && window.panels[object3d.name].isSelected) {
+          ({ object3d } = this.selectedObject3D);
         } else {
-          this.$store.commit('Camera/selectObject3D', { object3d: window.groups[groupName] });
-          object3d = window.groups[groupName];
+          while (groupName) {
+            if (selectedName === window.groups[groupName].name) break;
+            unselectedName = window.groups[groupName].name;
+            ({ groupName } = window.groups[groupName]);
+          }
+
+          if (unselectedName) {
+            if ((this.enableMoving || this.enableResizing) && groupName) {
+              object3d = window.groups[groupName];
+            } else object3d = window.groups[unselectedName];
+          } else if (this.enableMoving || this.enableResizing) {
+            ({ object3d } = this.selectedObject3D);
+          }
         }
-      } else this.$store.commit('Camera/selectObject3D', { object3d });
+      }
+      this.$store.commit('Camera/selectObject3D', { object3d });
 
       if (object3d.isPanel) {
         this.$store.commit('Panels/setPrevPosition', window.panels[object3d.name].position);
@@ -174,18 +190,15 @@ export default {
         } else {
           if (!window.panels[id]) return;
           window.panels[id].setDragging(false);
+          this.$store.commit('Camera/selectObject3D', { object3d: this.vglNamespace.object3ds[id] });
         }
       }
 
-      this.$refs.connections.setConnections();
-      Object.values(window.groups).forEach(group => group.updateBoundingBox());
-      EventBus.$emit('save');
+      this.$refs.connections.setConnections().then(() => EventBus.$emit('save'));
     },
     handleDragCancel() {
       // save history
       EventBus.$emit('cancel');
-      // this.$store.commit('Panels/enableMoving', false);
-      // this.$store.commit('Panels/enableResizing', false);
     },
     handlePanelsReady() {
       // init Connections when panels are rendered
@@ -202,17 +215,16 @@ export default {
       this.panelsMutationWatcher = this.$store.subscribe((mutation) => {
         if (mutation.type === 'Panels/updateConnection') {
           const self = this;
-          this.$nextTick(() => self.$refs.connections.setConnections());
-        } else if (mutation.type === 'Panels/setPanelData') {
-          this.$nextTick(() => Object.values(window.groups).forEach(group => group.updateBoundingBox()));
+          this.$nextTick(() => self.$refs.connections.setConnections().then(() => EventBus.$emit('save')));
         }
       });
       this.panelsActionWatcher = this.$store.subscribeAction({
         after: (action) => {
           if (action.type === 'Panels/deserialize') {
             // deserialize handler
+            const self = this;
+            this.$nextTick(() => self.$refs.connections.setConnections(true));
             Object.values(window.panels).forEach(p => p.updateColliding());
-            this.$nextTick(() => Object.values(window.groups).forEach(group => group.updateBoundingBox()));
           }
         },
       });

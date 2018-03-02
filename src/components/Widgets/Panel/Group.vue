@@ -4,15 +4,15 @@
                       :width-segments="1"
                       :height-segments="1"
                       :depth-segments="1"
-                      :width="dimension.width"
-                      :height="dimension.height"
-                      :depth="dimension.depth" />
+                      :width="dimension.width + 0.5"
+                      :height="dimension.height + 0.5"
+                      :depth="dimension.depth + 0.5" />
     <vgl-mesh ref='group'
               :geometry='`${name}_group_geometry`'
               :name="name"
               :position="`${position.x} ${position.y} ${position.z}`"
               :visible="false" />
-    <vgl-box-helper v-if="isSelected" :object="name" color="#888888"/>
+    <vgl-box-helper v-if="isSelected" :object="name" color="#bb4444" />
 
     <PlankCoordinate ref="coordinate"
                      :plank-dimension.sync="dimension"
@@ -20,6 +20,7 @@
                      plank-type='FP'
                      :plank-name="name"
                      :is-group-arrow="true"
+                     :group-name="name"
                      v-if="showCoordinateArrows" />
     <PlankDimensions ref="dimensions"
                      :plank-dimension.sync="dimension"
@@ -27,13 +28,14 @@
                      plank-type='FP'
                      :plank-name="name"
                      :is-group-arrow="true"
+                     :group-name="name"
                      v-if="showDimensionArrows" />
   </vgl-group>
 </template>
 
 <script>
 import { mapGetters, mapState } from 'vuex';
-import { Vector2, Vector3, Box3 } from 'three';
+import { Vector2, Vector3 } from 'three';
 import PlankCoordinate from './Plugins/PlankCoordinate';
 import PlankDimensions from './Plugins/PlankDimensions';
 
@@ -46,13 +48,12 @@ export default {
   inheritAttrs: false,
   data() {
     return {
-      currentBoundingBox: null,
       moving: false,
       isGroup: true,
     };
   },
   inject: ['vglNamespace'],
-  props: ['index', 'name', 'ptype', 'rlist'],
+  props: ['index', 'name', 'ptype', 'rlist', 'groupName', 'groupType'],
   computed: {
     ...mapGetters('DisplayManager', [
       'isItemDisplayed',
@@ -66,67 +67,67 @@ export default {
       'connections',
       'enableResizing',
       'enableMoving',
+      'moveDirection',
+      'prevPosition',
     ]),
     dimension: {
       get() {
-        if (!this.currentBoundingBox) return { width: 0, height: 0, depth: 0 };
-        const boundingBox = this.getBoundingBox();
-        return {
-          width: boundingBox.max.x - boundingBox.min.x,
-          height: boundingBox.max.y - boundingBox.min.y,
-          depth: boundingBox.max.z - boundingBox.min.z,
-        };
+        if (!this.isSelected) return { width: 0, height: 0, depth: 0 };
+        const size = new Vector3(0, 0, 0);
+        this.boundingBox.getSize(size);
+        return { width: size.x, height: size.y, depth: size.z };
       },
       set({ width, height, depth }) {
-        const boundingBox = this.getBoundingBox();
+        const { boundingBox } = this;
         const direction = this.selectedObject3D.object3d.isDimension ? this.selectedObject3D.object3d.name.split('_dimensions_arrow_')[1] : 'right';
-        const offset = {
-          width: width - this.dimension.width,
-          height: height - this.dimension.height,
-          depth: depth - this.dimension.depth,
+        const minWidth = Math.min(15000, Math.max(2800, width));
+        const minHeight = Math.min(15000, Math.max(1000, height));
+        const minDepth = Math.min(15000, Math.max(3200, depth));
+        const dimensionOffset = {
+          width: minWidth - this.dimension.width,
+          height: minHeight - this.dimension.height,
+          depth: minDepth - this.dimension.depth,
         };
         const newPosition = {
-          x: this.position.x + (direction === 'left' ? -offset.width / 2 : offset.width / 2),
-          y: this.position.y + (direction === 'left' ? -offset.height / 2 : offset.height / 2),
-          z: this.position.z + (direction === 'upper' ? -offset.depth / 2 : offset.depth / 2),
+          x: this.position.x + (direction === 'left' ? -dimensionOffset.width / 2 : dimensionOffset.width / 2),
+          y: this.position.y + (direction === 'left' ? -dimensionOffset.height / 2 : dimensionOffset.height / 2),
+          z: this.position.z + (direction === 'upper' ? -dimensionOffset.depth / 2 : dimensionOffset.depth / 2),
         };
 
         this.getChildPanelIDs().forEach((id) => {
           const { x: px, y: py, z: pz } = window.panels[id].position;
           const { width: pWidth, height: pHeight, depth: pDepth } = window.panels[id].dimensionsByType;
           const panelType = window.panels[id].ptype;
+          // const { resizable } = window.panels[id];
           const newPanelPosition = {
-            x: px < this.position.x ? (newPosition.x - width / 2 + px - boundingBox.min.x) : (newPosition.x + width / 2 + px - boundingBox.max.x),
-            y: py < this.position.y ? (newPosition.y - height / 2 + py - boundingBox.min.y) : (newPosition.y + height / 2 + py - boundingBox.max.y),
-            z: pz < this.position.z ? (newPosition.z - depth / 2 + pz - boundingBox.min.z) : (newPosition.z + depth / 2 + pz - boundingBox.max.z),
+            x: px < this.position.x ? (newPosition.x - minWidth / 2 + px - boundingBox.min.x) : (newPosition.x + minWidth / 2 + px - boundingBox.max.x),
+            y: py < this.position.y ? (newPosition.y - minHeight / 2 + py - boundingBox.min.y) : (newPosition.y + minHeight / 2 + py - boundingBox.max.y),
+            z: pz < this.position.z ? (newPosition.z - minDepth / 2 + pz - boundingBox.min.z) : (newPosition.z + minDepth / 2 + pz - boundingBox.max.z),
           };
 
           window.panels[id].position = {
-            x: panelType !== 'VDP' ? px - (direction === 'left' ? offset.width : 0) : newPanelPosition.x,
-            y: panelType !== 'FP' ? py - (direction === 'left' ? offset.height : 0) : newPanelPosition.y,
-            z: panelType !== 'VP' ? pz - (direction === 'upper' ? offset.depth : 0) : newPanelPosition.z,
+            x: (panelType !== 'VDP') ? px - (direction === 'left' ? dimensionOffset.width : 0) : newPanelPosition.x,
+            y: (panelType !== 'FP') ? py - (direction === 'left' ? dimensionOffset.height : 0) : newPanelPosition.y,
+            z: (panelType !== 'VP') ? pz - (direction === 'upper' ? dimensionOffset.depth : 0) : newPanelPosition.z,
           };
           window.panels[id].dimensionsByType = {
-            width: panelType !== 'VDP' ? pWidth + offset.width : pWidth,
-            height: panelType !== 'FP' ? pHeight + offset.height : pHeight,
-            depth: panelType !== 'VP' ? pDepth + offset.depth : pDepth,
+            width: panelType !== 'VDP' ? pWidth + dimensionOffset.width : pWidth,
+            height: panelType !== 'FP' ? pHeight + dimensionOffset.height : pHeight,
+            depth: panelType !== 'VP' ? pDepth + dimensionOffset.depth : pDepth,
           };
         });
       },
     },
     position: {
       get() {
-        if (!this.currentBoundingBox) return { x: 0, y: 0, z: 0 };
-        const boundingBox = this.getBoundingBox();
-        return {
-          x: (boundingBox.min.x + boundingBox.max.x) / 2,
-          y: (boundingBox.min.y + boundingBox.max.y) / 2,
-          z: (boundingBox.min.z + boundingBox.max.z) / 2,
-        };
+        if (!this.isSelected) return { x: 0, y: 0, z: 0 };
+        const center = new Vector3(0, 0, 0);
+        this.boundingBox.getCenter(center);
+        return center;
       },
       set({ x, y, z }) {
         const offset = new Vector3(x, y, z).sub(this.position);
-        this.getChildPanelIDs().forEach((id) => {
+        this.getAllChildPanelIDs().forEach((id) => {
           const { x: px, y: py, z: pz } = window.panels[id].position;
           const panelPos = new Vector3(px, py, pz).add(offset);
           window.panels[id].position = { x: panelPos.x, y: panelPos.y, z: panelPos.z };
@@ -148,16 +149,28 @@ export default {
       }
       return false;
     },
+    isParentSelected() {
+      if (this.isSelected) return true;
+      let { groupName } = this;
+      while (groupName) {
+        if (window.groups[groupName].isSelected) return true;
+        ({ groupName } = window.groups[groupName]);
+      }
+      return false;
+    },
+    boundingBox() {
+      const childPanels = this.getAllChildPanels().map(panel => panel.boundingBox());
+      const boundingBox = childPanels[0].clone();
+      childPanels.forEach((panel) => {
+        boundingBox.expandByPoint(panel.min);
+        boundingBox.expandByPoint(panel.max);
+      });
+
+      return boundingBox;
+    },
   },
   created() {
     window.groups[this.name] = this;
-  },
-  updated() {
-    if (this.isSelected) {
-      this.$nextTick(() => {
-        this.getChildPanels().forEach(panel => panel.updateColliding(true));
-      });
-    }
   },
   beforeDestroy() {
     // eslint-disable-next-line no-underscore-dangle
@@ -170,19 +183,22 @@ export default {
     getChildPanels() {
       return Object.values(window.panels).filter(panel => panel.groupName === this.name);
     },
+    getAllChildPanels() {
+      let panels = Object.values(window.panels).filter(panel => panel.groupName === this.name);
+      this.getChildGroups().forEach(group => { panels = panels.concat(group.getAllChildPanels()); });
+      return panels;
+    },
+    getChildGroups() {
+      return Object.values(window.groups).filter(group => group.groupName === this.name);
+    },
     getChildPanelIDs(exceptID = null) {
       return this.getChildPanels().map(panel => panel.id.split('-')[0]).filter(id => id !== exceptID);
     },
-    getBoundingBox() {
-      const childPanels = this.getChildPanels().map(panel => panel.$refs.panel.inst);
-      const boundingBox = new Box3();
-      boundingBox.setFromObject(childPanels[0]);
-      childPanels.forEach(panel => boundingBox.expandByObject(panel));
-
-      return boundingBox;
+    getAllChildPanelIDs(exceptID = null) {
+      return this.getAllChildPanels().map(panel => panel.id.split('-')[0]).filter(id => id !== exceptID);
     },
-    updateBoundingBox() {
-      this.currentBoundingBox = this.getBoundingBox();
+    getChildGroupNames(exceptName = null) {
+      return this.getChildGroups().map(group => group.name).filter(name => name !== exceptName);
     },
     select(isSelected) {
       const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};
@@ -193,6 +209,17 @@ export default {
         this.moving = false;
       } else if (object3d.isPanel) {
         if (isSelected) {
+          let { groupName } = window.panels[object3d.name];
+          let included = false;
+          while (groupName) {
+            if (groupName === this.name) {
+              included = true;
+              break;
+            }
+            ({ groupName } = window.groups[groupName]);
+          }
+          if (!included) return;
+
           const mouseScreenPoint = new Vector2();
           const rect = this.vglNamespace.renderers[0].inst.domElement.getBoundingClientRect();
           mouseScreenPoint.x = window.event.clientX - rect.left;
@@ -218,7 +245,7 @@ export default {
         if (!this.moving) this.deleteConnections();
         this.moving = true;
 
-        const closestVertex = childPanel.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint, this.getChildPanelIDs());
+        const closestVertex = childPanel.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint, this.getAllChildPanelIDs());
 
         this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
       } else if (mesh.isGroup) {
@@ -229,15 +256,22 @@ export default {
           /** MAGNETISM */
           const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};
           const selectedPanelVertices = window.panels[object3d.name].$refs.vertices;
-          selectedPanelVertices.showNearestVertices(mouseScreenPoint, this.getChildPanelIDs());
+          selectedPanelVertices.showNearestVertices(mouseScreenPoint, this.getAllChildPanelIDs());
 
           const closestVertex = selectedPanelVertices.closestVisibleVertex(mouseScreenPoint);
-          if (closestVertex && selectedPanelVertices.magnetize(closestVertex.vertex, mouseScreenPoint, this.getChildPanelIDs(object3d.name))) return;
+          if (closestVertex && selectedPanelVertices.magnetize(closestVertex.vertex, mouseScreenPoint, true)) {
+            return;
+          }
         } else {
           childPanel.$refs.vertices.resetAllVerticesVisibility();
         }
 
-        this.position = position;
+        const { x, y, z } = this.prevPosition;
+        const newOrigin = new Vector3(x, y, z);
+        if (!this.moveDirection || this.moveDirection === 'x') newOrigin.setX(position.x);
+        if (!this.moveDirection || this.moveDirection === 'y') newOrigin.setY(position.y);
+        if (!this.moveDirection || this.moveDirection === 'z') newOrigin.setZ(position.z);
+        this.position = newOrigin;
       }
     },
     resize(mesh, position, newVector, magnetism) {
@@ -252,7 +286,13 @@ export default {
       else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
     },
     deleteConnections() {
-      this.rlist.forEach(p => this.$store.dispatch('Panels/deletePanelConnections', { id: p.id.split('-')[0], exceptPanelIDs: this.getChildPanelIDs() }));
+      this.rlist.forEach((p) => {
+        if (p.ptype === 'group_stddrawer') {
+          window.groups[p.name].deleteConnections();
+        } else {
+          this.$store.dispatch('Panels/deletePanelConnections', { id: p.id.split('-')[0], exceptPanelIDs: this.getChildPanelIDs() });
+        }
+      });
     },
   },
   watch: {

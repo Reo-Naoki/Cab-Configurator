@@ -66,7 +66,7 @@ export default {
   },
   computed: {
     connectionsWherePanelIsP2() {
-      return this.connections.filter(c => c.p2 === Number(this.plankID) && c.isDefaultConnection);
+      return this.connections.filter(c => c.p2 === Number(this.plankID) && c.isDefaultConnection).filter(c => !window.panels[c.p2].groupName || !window.groups[window.panels[c.p2].groupName].moving);
     },
   },
   methods: {

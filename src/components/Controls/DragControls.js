@@ -149,7 +149,15 @@ export default {
         const { object, point } = (!intersectObj && intersects.length > 1) ? intersects[1] : intersectObj;
         // if (object.isPanel && this.selectedObject === object && this.enableMoving && !this.isDragging) {
         if (this.selectedObject3D && object.isPanel && this.enableMoving && !this.isDragging
-          && (this.selectedObject3D.object3d === object || this.selectedObject3D.object3d.name === window.panels[object.name].groupName)) {
+          && (this.selectedObject3D.object3d === object
+            || (() => {
+              let { groupName } = window.panels[object.name];
+              while (groupName) {
+                if (this.selectedObject3D.object3d.name === groupName) return true;
+                ({ groupName } = window.groups[groupName]);
+              }
+              return false;
+            }))) {
           this.$emit('hovermove', object, point.clone());
         } else {
           this.$store.commit('Camera/setHoverObject3D');
@@ -307,7 +315,15 @@ export default {
 
       if (this.selected && event.code === 'Escape') {
         this.onDocumentRightMouseClick(event);
-      }
+      } else if (this.selected && event.code === 'ArrowUp') {
+        this.$store.commit('Panels/setMoveDirection', 'y');
+      } else if (this.selected && event.code === 'ArrowLeft') {
+        this.$store.commit('Panels/setMoveDirection', 'x');
+      } else if (this.selected && event.code === 'ArrowRight') {
+        this.$store.commit('Panels/setMoveDirection', 'z');
+      } else if (this.selected && event.code === 'ArrowDown') {
+        this.$store.commit('Panels/setMoveDirection');
+      } else this.$store.commit('Panels/setMoveDirection');
     },
   },
   watch: {

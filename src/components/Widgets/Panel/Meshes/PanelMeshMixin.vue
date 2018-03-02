@@ -115,6 +115,20 @@
 
     <!-- Bounding Box for Physical Panel of DoorPanel-->
     <vgl-box-helper v-if="isDoorPanel" :object="id + '_boundingBox'" color="#666666"/>
+
+    <vgl-box-geometry :name='`${id}_asdf`'
+                      :width-segments="1"
+                      :height-segments="1"
+                      :depth-segments="1"
+                      :width="dimension.width + 0.5"
+                      :height="dimension.height + 0.5"
+                      :depth="dimension.depth + 0.5" />
+    <vgl-mesh ref='dgroup'
+              :geometry='`${id}_asdf`'
+              :name="name"
+              :position="`${position.x} ${position.y} ${position.z}`"
+              :visible="false" />
+    <vgl-box-helper v-if="isSelected" :object="name" color="#bb4444" />
   </vgl-group>
 </template>
 
@@ -198,9 +212,14 @@ export default {
       type: Boolean,
       default: true,
     },
+    resizable: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
+      currentBoundingBox: null,
       moving: false,
       collide: false,
       prevType: null,
@@ -218,13 +237,39 @@ export default {
       'connections',
       'enableResizing',
       'enableMoving',
+      'moveDirection',
+      'prevPosition',
     ]),
     relatedConnections() {
       return this.connections.filter(c => c.containsPanel(this.id));
     },
     isSelected() {
-      if (this.selectedObject3D && this.selectedObject3D.object3d) return this.selectedObject3D.object3d.name.split('_').includes(this.id.toString());
+      if (this.selectedObject3D) {
+        const selectedObject = this.selectedObject3D.object3d;
+        if (selectedObject.isCoordinate && selectedObject.name.split('_coordinate')[0] === this.id) return true;
+        if (selectedObject.isDimension && selectedObject.name.split('_dimensions')[0] === this.id) return true;
+        if (selectedObject.name === this.id) return true;
+      }
       return false;
+    },
+    isParentSelected() {
+      if (this.isSelected) return true;
+      let { groupName } = this;
+      while (groupName) {
+        if (window.groups[groupName].isSelected) return true;
+        ({ groupName } = window.groups[groupName]);
+      }
+      return false;
+    },
+    topGroupName() {
+      let { groupName } = this;
+      if (!groupName) return null;
+
+      while (groupName) {
+        if (!window.groups[groupName].groupName) return groupName;
+        ({ groupName } = window.groups[groupName]);
+      }
+      return null;
     },
     showStickers() {
       return this.isItemDisplayed('stickers');
@@ -254,6 +299,13 @@ export default {
         if (y !== this.dimension.y) this.$emit('update:y', y / 10.0);
         if (thick !== this.dimension.thick) this.$emit('update:thick', thick / 10.0);
       },
+    },
+    centerPivotPos() {
+      return {
+        x: this.prevPosition.x + this.dimensionsByType.width / 2,
+        y: this.prevPosition.y + this.dimensionsByType.height / 2,
+        z: this.prevPosition.z + this.dimensionsByType.depth / 2,
+      };
     },
     position: {
       get() {
@@ -292,6 +344,12 @@ export default {
           z: z - (this.dimensionsByType.depth / 2),
         };
       },
+    },
+    getBoundingBox() {
+      const { x, y, z } = this.position;
+      const { width, height, depth } = this.isDoorPanel ? this.realDimensionByType : this.dimensionsByType;
+
+      return new Box3(new Vector3(x, y, z), new Vector3(x + width, y + height, z + depth));
     },
     boxRotation() {
       return `${this.rotation.x} ${this.rotation.y} ${this.rotation.z}`;
@@ -335,8 +393,9 @@ export default {
     window.panels[this.id] = this;
   },
   updated() {
-    if (this.prevType !== this.ptype || this.isSelected) {
+    if (this.prevType !== this.ptype || this.isParentSelected) {
       const self = this;
+      this.currentBoundingBox = this.getBoundingBox;
       this.$nextTick(() => self.updateColliding(true));
     }
     this.prevType = this.ptype;
@@ -350,6 +409,12 @@ export default {
     this.$emit('ready');
   },
   methods: {
+    boundingBox() {
+      if (this.currentBoundingBox) return this.currentBoundingBox;
+
+      this.currentBoundingBox = this.getBoundingBox;
+      return this.currentBoundingBox;
+    },
     magnetize(translationVector) {
       this.setNewPosition(this.fixedPosition.add(translationVector));
     },
@@ -364,54 +429,12 @@ export default {
       return Object.values(vglNamespace.object3ds)
         .filter(obj3D => (obj3D.isMesh === true && obj3D.name !== id && obj3D.isPanel));
     },
-    intersects(object) {
-      // check intersection of object or current if no args
-      // should use window.panels instead
-      const { vglNamespace: { object3ds }, id } = this;
-      const currentBoundingBox = new Box3();
-      currentBoundingBox.setFromObject(object || object3ds[id]);
-      const planks = Object.values(object3ds).filter(o => o.isPanel && o.name !== id);
-
-      return planks
-        .filter((mesh) => {
-          const meshBB = new Box3();
-          meshBB.setFromObject(mesh);
-          return currentBoundingBox.intersectsBox(meshBB) === true;
-        });
-    },
-    getSideCollide() {
-      this.resetColide();
-      const currentBoundingBox = new Box3();
-      currentBoundingBox.setFromObject(this.vglNamespace.object3ds[this.id]);
-
-      this.intersects().forEach((mesh) => {
-        this.getSideCollideWithMesh(currentBoundingBox, mesh);
-      });
-
-      return this.collide;
-    },
-    getSideCollideWithMesh(currentBoundingBox, mesh) {
-      mesh.geometry.computeBoundingBox();
-      const meshBB = new Box3();
-      meshBB.setFromObject(mesh);
-      this.collide.left = this.collide.left || !currentBoundingBox.clone().translate(new Vector3(1, 0, 0)).intersectsBox(meshBB);
-      this.collide.right = this.collide.right || !currentBoundingBox.clone().translate(new Vector3(-1, 0, 0)).intersectsBox(meshBB);
-      this.collide.upper = this.collide.upper || !currentBoundingBox.clone().translate(new Vector3(0, -1, 0)).intersectsBox(meshBB);
-      this.collide.lower = this.collide.lower || !currentBoundingBox.clone().translate(new Vector3(0, 1, 0)).intersectsBox(meshBB);
-      this.collide.front = this.collide.front || !currentBoundingBox.clone().translate(new Vector3(0, 0, -1)).intersectsBox(meshBB);
-      this.collide.back = this.collide.back || !currentBoundingBox.clone().translate(new Vector3(0, 0, 1)).intersectsBox(meshBB);
-    },
-    resetCollide() {
-      // eslint-disable-next-line no-return-assign
-      Object.keys(this.collide).forEach(k => (this.collide[k] = false));
-    },
     setNewPosition(position) {
       // unfix origin position
       this.fixedPosition = position;
     },
     move(event, position, mesh, magnetism) {
       this.collide = false;
-
       const mouseScreenPoint = new Vector2();
       const rect = this.vglNamespace.renderers[0].inst.domElement.getBoundingClientRect();
       mouseScreenPoint.x = event.clientX - rect.left;
@@ -438,10 +461,11 @@ export default {
           this.$refs.vertices.resetAllVerticesVisibility();
         }
 
-        const newOrigin = this.fixedPosition.clone();
-        newOrigin.setX(position.x);
-        newOrigin.setY(position.y);
-        newOrigin.setZ(position.z);
+        const { x, y, z } = this.centerPivotPos;
+        const newOrigin = new Vector3(x, y, z);
+        if (!this.moveDirection || this.moveDirection === 'x') newOrigin.setX(position.x);
+        if (!this.moveDirection || this.moveDirection === 'y') newOrigin.setY(position.y);
+        if (!this.moveDirection || this.moveDirection === 'z') newOrigin.setZ(position.z);
         this.setNewPosition(newOrigin);
       }
     },
@@ -463,7 +487,10 @@ export default {
           mouseScreenPoint.y = window.event.clientY - rect.top;
 
           this.$refs.vertices.setNearestVerticeVisible(this.hoveredObject3D);
-        } else if (!this.groupName || !window.groups[this.groupName].isSelected) {
+        } else if (!this.groupName) {
+          this.$refs.vertices.resetVerticesVisibility();
+          this.moving = false;
+        } else if (!this.hoveredObject3D || this.hoveredObject3D.object3d.name !== this.id) {
           this.$refs.vertices.resetVerticesVisibility();
           this.moving = false;
         }
@@ -478,6 +505,7 @@ export default {
       else if (this.selectedObject3D.object3d.isDimension && isSelected) this.$refs.dimensions.select(this.selectedObject3D.object3d);
       else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
       else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
+      if (!isSelected) this.moving = false;
     },
     setCollide(value) {
       this.collide = value;
@@ -485,27 +513,28 @@ export default {
     getCollide() {
       return this.collide;
     },
-    updateColliding(checkOthers = false) {
-      const { [this.id]: current, ...others } = window.panels;
-      const currentBox = new Box3();
-      currentBox.setFromObject(this.$refs.panel.inst);
-      this.collide = Object.values(others)
-        .filter(c => c != null)
-        .reduce((isColliding, c) => {
-          const { inst } = c.$refs.panel;
-          const box = new Box3();
-          box.setFromObject(inst);
-          if (currentBox.intersectsBox(box)) {
-            const size = new Vector3();
-            currentBox.clone().intersect(box.clone()).getSize(size);
-            const isBoxCollide = !Object.values(size).includes(0);
-            if (isBoxCollide) window.panels[inst.name].setCollide(isBoxCollide);
-            if (window.panels[inst.name].getCollide() && checkOthers) window.panels[inst.name].updateColliding();
-            return isColliding || isBoxCollide;
-          }
-          if (window.panels[inst.name].getCollide() && checkOthers) window.panels[inst.name].updateColliding();
-          return isColliding;
-        }, false);
+    async updateColliding(checkOthers = false) {
+      // if (!checkOthers || checkOthers) return null;
+      return new Promise(resolve => {
+        const { [this.id]: current, ...others } = window.panels;
+        const currentBox = this.boundingBox();
+        this.collide = Object.values(others)
+          .filter(c => c != null)
+          .reduce((isColliding, c) => {
+            const box = c.boundingBox();
+            if (currentBox.intersectsBox(box)) {
+              const size = new Vector3();
+              currentBox.clone().intersect(box).getSize(size);
+              const isBoxCollide = !Object.values(size).includes(0);
+              if (isBoxCollide) c.setCollide(isBoxCollide);
+              if (c.getCollide() && !isBoxCollide && checkOthers) c.updateColliding();
+              return isColliding || isBoxCollide;
+            }
+            if (c.getCollide() && checkOthers) c.updateColliding();
+            return isColliding;
+          }, false);
+        resolve();
+      });
     },
   },
   watch: {

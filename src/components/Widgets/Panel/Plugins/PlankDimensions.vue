@@ -44,6 +44,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    groupName: {
+      type: String,
+      required: false,
+    },
   },
   mounted() {
     this.addElementsToDOM();
@@ -284,7 +288,7 @@ export default {
 
         const dimensions = new PlanksDimensions({ x: dimensionX / 10, y: dimensionY / 10, thick: null });
 
-        if (!dimensions.isValid) {
+        if (!dimensions.isValid && !this.isGroupArrow) {
           dimensions.makeValid(key);
 
           if (this.plankType === 'FP') {
@@ -314,6 +318,10 @@ export default {
           }
         }
 
+        if (this.isGroupArrow) {
+          if (direction === 'upper' || direction === 'lower') dimensions[key] = Math.min(1500, Math.max(320, dimensions[key]));
+          else if (direction === 'left' || direction === 'right') dimensions[key] = Math.min(1500, Math.max(280, dimensions[key]));
+        }
         this.inputElement.value = dimensions[key];
 
         if (this.plankPoints) {

@@ -1,5 +1,5 @@
 <script>
-import { Vector3 } from 'three';
+import { Vector3, Box3 } from 'three';
 import VerticalPanel from './VerticalPanel';
 
 export default {
@@ -79,6 +79,13 @@ export default {
         };
       },
     },
+    getBoundingBox() {
+      const { left, bottom } = this.hasFeuillure;
+      const { x, y, z } = this.position;
+      const { width, height, depth } = this.dimensionsByType;
+
+      return new Box3(new Vector3(x + (left ? this.dimensionsMarginLeft : 0), y + (bottom ? this.dimensionsMarginBottom : 0), z), new Vector3(x + width, y + height, z + depth));
+    },
     isHDFPanel() {
       return true;
     },
@@ -98,7 +105,7 @@ export default {
   methods: {
     setFeuillure(isInit = false) {
       const hasFeuillure = {
-        left: false, top: false, bottom: false, right: false,
+        left: true, top: true, bottom: this.moving, right: true,
       };
 
       for (let i = 0; i < this.relatedConnections.length; i += 1) {
@@ -124,46 +131,46 @@ export default {
       if (!isInit) {
         const newDimension = { ...this.dimension };
         const newPosition = { ...this.position };
-        if (this.hasFeuillure.top !== hasFeuillure.top) {
-          // top connection changed, fix real dimension
-          if (hasFeuillure.top) {
-            // now have top connection
-            newDimension.y += this.dimensionsMarginTop;
-          } else {
-            newDimension.y -= this.dimensionsMarginTop;
-          }
-        }
-        if (this.hasFeuillure.right !== hasFeuillure.right) {
-          // right connection changed, fix real dimension
-          if (hasFeuillure.right) {
-            // now have right connection
-            newDimension.x += this.dimensionsMarginRight;
-          } else {
-            newDimension.x -= this.dimensionsMarginRight;
-          }
-        }
-        if (this.hasFeuillure.left !== hasFeuillure.left) {
-          // left connection changed, fix real position
-          if (hasFeuillure.left) {
-            // now have left connection
-            newPosition.x -= this.dimensionsMarginLeft;
-            newDimension.x += this.dimensionsMarginLeft;
-          } else {
-            newPosition.x += this.dimensionsMarginLeft;
-            newDimension.x -= this.dimensionsMarginLeft;
-          }
-        }
-        if (this.hasFeuillure.bottom !== hasFeuillure.bottom) {
-          // bottom connection changed, fix real position
-          if (hasFeuillure.bottom) {
-            // now have bottom connection
-            newPosition.y -= this.dimensionsMarginBottom;
-            newDimension.y += this.dimensionsMarginBottom;
-          } else {
-            newPosition.y += this.dimensionsMarginBottom;
-            newDimension.y -= this.dimensionsMarginBottom;
-          }
-        }
+        // if (this.hasFeuillure.top !== hasFeuillure.top) {
+        //   // top connection changed, fix real dimension
+        //   if (hasFeuillure.top) {
+        //     // now have top connection
+        //     newDimension.y += this.dimensionsMarginTop;
+        //   } else {
+        //     newDimension.y -= this.dimensionsMarginTop;
+        //   }
+        // }
+        // if (this.hasFeuillure.right !== hasFeuillure.right) {
+        //   // right connection changed, fix real dimension
+        //   if (hasFeuillure.right) {
+        //     // now have right connection
+        //     newDimension.x += this.dimensionsMarginRight;
+        //   } else {
+        //     newDimension.x -= this.dimensionsMarginRight;
+        //   }
+        // }
+        // if (this.hasFeuillure.left !== hasFeuillure.left) {
+        //   // left connection changed, fix real position
+        //   if (hasFeuillure.left) {
+        //     // now have left connection
+        //     newPosition.x -= this.dimensionsMarginLeft;
+        //     newDimension.x += this.dimensionsMarginLeft;
+        //   } else {
+        //     newPosition.x += this.dimensionsMarginLeft;
+        //     newDimension.x -= this.dimensionsMarginLeft;
+        //   }
+        // }
+        // if (this.hasFeuillure.bottom !== hasFeuillure.bottom) {
+        //   // bottom connection changed, fix real position
+        //   if (hasFeuillure.bottom) {
+        //     // now have bottom connection
+        //     newPosition.y -= this.dimensionsMarginBottom;
+        //     newDimension.y += this.dimensionsMarginBottom;
+        //   } else {
+        //     newPosition.y += this.dimensionsMarginBottom;
+        //     newDimension.y -= this.dimensionsMarginBottom;
+        //   }
+        // }
         if (newDimension.x !== this.dimension.x || newDimension.y !== this.dimension.y || newDimension.z !== this.dimension.z) {
           // check for changes
           this.dimension = newDimension;

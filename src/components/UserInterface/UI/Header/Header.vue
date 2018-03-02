@@ -1,11 +1,20 @@
 <template>
   <div class="and-middle-bandeau">
     <div class="and-wrapper-icon-navbar">
-      <div id="ard-2dzoomminus" class="and-margin-icon">
-        <div class="round-icon white"></div>
-        <div class="and-text-under-icon">Ouvrir projet</div>
+      <div>
+        <div id="ard-2dzoomminus" class="and-margin-icon">
+          <div class="round-icon white"></div>
+          <div class="and-text-under-icon">Ouvrir projet</div>
+        </div>
+        <div id="ard-2dzoomplus" class="and-margin-icon"></div>
       </div>
-      <div id="ard-2dzoomplus" class="and-margin-icon"></div>
+      <div>
+        <div id="ard-2dzoomminus" class="and-margin-icon">
+          <div class="round-icon white" @click="() => { this.showImportBox = true; }"><i class="el-icon-document-add"></i></div>
+          <div class="and-text-under-icon">Importer un projet</div>
+        </div>
+        <div id="ard-2dzoomplus" class="and-margin-icon"></div>
+      </div>
     </div>
     <a href="/info" target="_blank" class="and-wrapper-icon-navbar w-inline-block">
       <div class="and-margin-icon">
@@ -49,6 +58,7 @@
     </div>
     <ProjectsBox />
     <History />
+    <ImportModel :show-import-dialog.sync="showImportBox"/>
   </div>
 </template>
 
@@ -58,11 +68,22 @@ import { mapActions, mapState } from 'vuex';
 import EventBus from '../../../EventBus/EventBus';
 import ProjectsBox from './Plugins/ProjectsBox';
 import History from './Plugins/History';
+import ImportModel from '../ImportModel';
 
 export default {
   name: 'Header',
   components: {
-    History, ProjectsBox, [Icon.name]: Icon, [Link.name]: Link,
+    ProjectsBox,
+    History,
+    ImportModel,
+    [Icon.name]: Icon,
+    [Link.name]: Link,
+  },
+  data() {
+    return {
+      showProjectBox: false,
+      showImportBox: false,
+    };
   },
   computed: {
     ...mapState('Panels', [
@@ -71,11 +92,6 @@ export default {
     ...mapState('User', {
       userID: 'id',
     }),
-  },
-  data() {
-    return {
-      showProjectBox: false,
-    };
   },
   methods: {
     ...mapActions('Panels', [
@@ -96,9 +112,11 @@ export default {
     },
     redo() {
       EventBus.$emit('redo');
+      this.$store.commit('Camera/selectObject3D');
     },
     undo() {
       EventBus.$emit('undo');
+      this.$store.commit('Camera/selectObject3D');
     },
   },
 };

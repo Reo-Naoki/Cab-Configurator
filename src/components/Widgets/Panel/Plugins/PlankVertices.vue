@@ -15,6 +15,7 @@
 
 <script>
 import Vue from 'vue';
+import { mapState } from 'vuex';
 import { Vector3 } from 'three';
 import EventBus from '../../../EventBus/EventBus';
 
@@ -74,6 +75,13 @@ export default {
     };
   },
   computed: {
+    ...mapState('Panels', [
+      'moveDirection',
+      'prevPosition',
+    ]),
+    ...mapState('Camera', [
+      'selectedObject3D',
+    ]),
     vertices() {
       const {
         plankName,
@@ -185,7 +193,10 @@ export default {
     },
     otherVertices(exceptPanels = null) {
       const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
-      const optherPanels = exceptPanels ? Object.values(others).filter(panel => !exceptPanels.includes(panel.id)) : Object.values(others);
+      const optherPanels = Object.values(others).filter((panel) => {
+        if (exceptPanels && exceptPanels.includes(panel.id)) return false;
+        return true;
+      });
       return optherPanels
         .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
         .flatMap(c => c.$refs.vertices.vertices) // flatMap and get a list of every vgl-mesh vertex components
@@ -539,7 +550,7 @@ export default {
       if (!activeVertex) return;
       EventBus.$emit('vertices-near', activeVertex, this.plankType, null, mouse, exceptPanels);
     },
-    magnetize(targetVertex, mouse, siblingPanels = null) {
+    magnetize(targetVertex, mouse, isGroup = false) {
       const { x: tx, y: ty, z: tz } = targetVertex.position;
       const targetVector = new Vector3(tx, ty, tz);
       const targetVector2D = this.projectVectorTo2D(targetVector.x, targetVector.y, targetVector.z);
@@ -550,13 +561,18 @@ export default {
       const [ax, ay, az] = activeVertex.position.split(' ').map(v => parseFloat(v, 10));
 
       if (mouse.distanceTo(targetVector2D) <= this.magnetRange) {
-        const offset = new Vector3(tx - ax, ty - ay, tz - az);
-        this.position = this.position.clone().add(offset);
-        if (siblingPanels) {
-          siblingPanels.forEach((panel) => {
-            window.panels[panel].$refs.vertices.position = window.panels[panel].$refs.vertices.position.clone().add(offset);
-          });
-        }
+        const offset = new Vector3(0, 0, 0);
+        if (!this.moveDirection || this.moveDirection === 'x') offset.setX(tx - ax);
+        if (!this.moveDirection || this.moveDirection === 'y') offset.setY(ty - ay);
+        if (!this.moveDirection || this.moveDirection === 'z') offset.setZ(tz - az);
+        if (isGroup) {
+          const groupPosition = window.groups[this.selectedObject3D.object3d.name].position;
+          window.groups[this.selectedObject3D.object3d.name].position = {
+            x: groupPosition.x + offset.x,
+            y: groupPosition.y + offset.y,
+            z: groupPosition.z + offset.z,
+          };
+        } else this.position = this.position.add(offset);
         return true;
       }
       return false;

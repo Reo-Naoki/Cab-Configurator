@@ -12,6 +12,7 @@
 
 <script>
 import { Vector3 } from 'three';
+import { mapState } from 'vuex';
 // import EventBus from '../../../EventBus/EventBus';
 
 export default {
@@ -33,6 +34,10 @@ export default {
     isGroupArrow: {
       type: Boolean,
       default: false,
+    },
+    groupName: {
+      type: String,
+      required: false,
     },
   },
   mounted() {
@@ -59,6 +64,17 @@ export default {
     };
   },
   computed: {
+    ...mapState('Panels', [
+      'prevPosition',
+    ]),
+    centerPivotPos() {
+      if (this.isGroupArrow) return this.prevPosition;
+      return {
+        x: this.prevPosition.x + this.plankDimension.width / 2,
+        y: this.prevPosition.y + this.plankDimension.height / 2,
+        z: this.prevPosition.z + this.plankDimension.depth / 2,
+      };
+    },
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
     },
@@ -167,18 +183,21 @@ export default {
     },
     resizeLogic(direction, position) {
       let newPosition = null;
+      let distance = 0;
       this.selectedArrow = direction;
 
       if (direction === 'x' || direction === '-x') {
-        const distance = position.x - this.plankPosition.x;
-        newPosition = { x: this.plankPosition.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
+        distance = position.x - this.centerPivotPos.x;
+        newPosition = { x: position.x, y: this.plankPosition.y, z: this.plankPosition.z };
       } else if (direction === 'y' || direction === '-y') {
-        const distance = position.y - this.plankPosition.y;
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y + distance, z: this.plankPosition.z };
+        distance = position.y - this.centerPivotPos.y;
+        newPosition = { x: this.plankPosition.x, y: position.y, z: this.plankPosition.z };
       } else if (direction === 'z' || direction === '-z') {
-        const distance = position.z - this.plankPosition.z;
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + distance };
+        distance = position.z - this.centerPivotPos.z;
+        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: position.z };
       }
+
+      this.inputElement.value = distance / 10 * (direction.includes('-') ? -1 : 1);
 
       this.$emit('update:plankPosition', newPosition);
     },
@@ -186,17 +205,17 @@ export default {
       let newPosition = null;
 
       if (direction === 'x') {
-        newPosition = { x: this.plankPosition.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
+        newPosition = { x: this.centerPivotPos.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
       } else if (direction === '-x') {
-        newPosition = { x: this.plankPosition.x - distance, y: this.plankPosition.y, z: this.plankPosition.z };
+        newPosition = { x: this.centerPivotPos.x - distance, y: this.plankPosition.y, z: this.plankPosition.z };
       } else if (direction === 'y') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y + distance, z: this.plankPosition.z };
+        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y + distance, z: this.plankPosition.z };
       } else if (direction === '-y') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y - distance, z: this.plankPosition.z };
+        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y - distance, z: this.plankPosition.z };
       } else if (direction === 'z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z + distance };
+        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z + distance };
       } else if (direction === '-z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.plankPosition.z - distance };
+        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z - distance };
       }
 
       this.$emit('update:plankPosition', newPosition);

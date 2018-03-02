@@ -1,16 +1,12 @@
 <template>
   <div class="menu-left" @click.stop="">
-    <div class="wrapper-name-panel" v-if="panel != null">
-      <div>Planche n°{{ panel.id }}</div>
-      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()">☩</div>
-      <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}${panel.resizable ? '' :' disabled'}`]" @click="panel.resizable ? resizePanel() : null">◱</div>
-      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"></div>
-    </div>
-    <div class="wrapper-name-panel" v-else-if="group != null">
-      <div>Group n°{{ selectedObject3DIndex + 1 }}</div>
-      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()">☩</div>
-      <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}`]" @click="resizePanel()">◱</div>
-      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"></div>
+    <div class="wrapper-name-panel" v-if="panel != null || group != null">
+      <div v-if="panel != null">Planche n°{{ panel.id }}</div>
+      <div v-else-if="group != null">Group n°{{ selectedObject3DIndex + 1 }}</div>
+      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()"><i class="el-icon-rank" /></div>
+      <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}${(panel != null && !panel.resizable) || (group != null && !group.resizable) ? ' disabled' :''}`]"
+          @click="(panel != null && panel.resizable) || (group != null && group.resizable) ? resizePanel() : null">◱</div>
+      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"><i class="el-icon-delete" /></div>
     </div>
     <EdgesDisplayer />
     <LayerEditor :layers="layers"/>
@@ -81,11 +77,9 @@ export default {
   },
   methods: {
     deletePanel() {
-      if (this.panel) this.$store.dispatch('Panels/deletePanel', this.panel.id);
-      else if (this.group) {
-        window.groups[this.group.name].rlist.forEach(panel => this.$store.dispatch('Panels/deletePanel', panel.id.split('-')[0]));
-        this.$store.dispatch('Panels/deleteGroup', this.group.name);
-      }
+      if (this.panel) this.$store.dispatch('Panels/deletePanel', { id: this.panel.id, save: true });
+      else if (this.group) this.deleteGroup(this.group.name);
+      this.$store.commit('Camera/selectObject3D');
     },
     movePanel() {
       this.$store.commit('Panels/enableMoving', !this.enableMoving);
@@ -94,6 +88,16 @@ export default {
     resizePanel() {
       this.$store.commit('Panels/enableResizing', !this.enableResizing);
       this.$store.commit('Panels/enableMoving', false);
+    },
+    deleteGroup(name) {
+      let lastGroup = true;
+      window.groups[name].rlist.forEach((list) => {
+        if (list.ptype === 'group_stddrawer') {
+          this.deleteGroup(list.name);
+          lastGroup = false;
+        } else this.$store.dispatch('Panels/deletePanel', { id: list.id.split('-')[0] });
+      });
+      this.$store.dispatch('Panels/deleteGroup', { name, save: lastGroup });
     },
   },
 };

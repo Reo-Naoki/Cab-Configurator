@@ -1,5 +1,5 @@
 <template>
-  <div class="image-modal" :style="modalStyle" @click="close()">
+  <div class="image-modal" :style="modalStyle">
     <span class="close" @click="close()"><i class="el-icon-circle-close"></i></span>
     <div class="image-modal-content" @click.stop="">
       <slot></slot>

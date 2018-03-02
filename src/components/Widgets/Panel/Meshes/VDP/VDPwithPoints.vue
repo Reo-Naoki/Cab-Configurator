@@ -50,7 +50,7 @@ export default {
     },
     materials() {
       const formattedEdges = this.edges.split('-').map(edge => !!parseInt(edge, 10));
-      if (this.collide) return 'red';
+      if (this.collide) return ['red', 'red', 'red', 'red', 'red', 'red', 'red'];
       return [
         this.isSelected ? 'selected' : this.material.toString(),
         formattedEdges[0] ? this.material.toString() : 'raw',

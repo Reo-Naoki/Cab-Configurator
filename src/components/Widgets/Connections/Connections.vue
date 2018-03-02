@@ -63,56 +63,56 @@ export default {
       // browsing is P2;
       return browsing.name;
     },
-    generateDefaultConnections() {
+    generateDefaultConnections(recalcAll = false) {
       const panels = Object.values(window.panels).map(p => p.$refs.panel.inst);
       let defaultConnections = [];
       const selectedObject = this.selectedObject3D ? this.selectedObject3D.object3d : null;
       let selectedIDs = null;
 
-      if (selectedObject) selectedIDs = selectedObject.isGroup ? window.groups[selectedObject.name].getChildPanelIDs() : [selectedObject.name.split('_')[0]];
+      if (!recalcAll && selectedObject && window.groups[selectedObject.name]) {
+        selectedIDs = selectedObject.isGroup ? window.groups[selectedObject.name].getAllChildPanelIDs() : [selectedObject.name.split('_')[0]];
+      }
       if (selectedIDs) {
-        defaultConnections = this.connections.filter(c => (selectedIDs.includes(c.p1) && selectedIDs.includes(c.p2)) || !selectedIDs.map(id => c.containsPanel(id)).includes(true));
+        defaultConnections = this.connections.filter(c => !selectedIDs.map(id => c.containsPanel(id)).includes(true));
       }
 
       for (let i = 0; i < panels.length; i += 1) {
-        if (!selectedIDs || selectedIDs.includes(panels[i].name)) {
-          const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
-          currentPanel.updateMatrixWorld();
-          currentPanel.geometry.computeBoundingBox();
-          const currentBB = currentPanel.geometry.boundingBox.clone();
-          currentBB.setFromObject(currentPanel);
+        const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
+        currentPanel.updateMatrixWorld();
+        currentPanel.geometry.computeBoundingBox();
+        const currentBB = currentPanel.geometry.boundingBox.clone();
+        currentBB.setFromObject(currentPanel);
 
-          for (let y = 0; y < panels.length; y += 1) {
-            if (i !== y) {
-              const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
-              browsingPanel.updateMatrixWorld();
-              browsingPanel.geometry.computeBoundingBox();
-              const browsingBB = browsingPanel.geometry.boundingBox.clone();
-              browsingBB.setFromObject(browsingPanel);
+        for (let y = i + 1; y < panels.length; y += 1) {
+          if (!selectedIDs || selectedIDs.includes(panels[i].name) || selectedIDs.includes(panels[y].name)) {
+            const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
+            browsingPanel.updateMatrixWorld();
+            browsingPanel.geometry.computeBoundingBox();
+            const browsingBB = browsingPanel.geometry.boundingBox.clone();
+            browsingBB.setFromObject(browsingPanel);
 
-              if (browsingBB.intersectsBox(currentBB)) {
-                // get intersect of the two boundingBox (don't forget to clone currentBB before intersect)
-                const intersectBB = currentBB.clone().intersect(browsingBB);
-                const intersectCenter = new Vector3();
-                intersectBB.getCenter(intersectCenter);
-                const isize = new Vector3();
-                intersectBB.getSize(isize);
+            if (browsingBB.intersectsBox(currentBB)) {
+              // get intersect of the two boundingBox (don't forget to clone currentBB before intersect)
+              const intersectBB = currentBB.clone().intersect(browsingBB);
+              const intersectCenter = new Vector3();
+              intersectBB.getCenter(intersectCenter);
+              const isize = new Vector3();
+              intersectBB.getSize(isize);
 
-                // determine which Panel is P2
-                const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
-                const newConnection = new Connection({
-                  p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
-                  p2: p2name,
-                  center: intersectCenter,
-                  ilength: Math.max(...isize.toArray()),
-                });
-                if (this.$store.state.User.isAdesigner && this.init) {
-                  newConnection.setAsFreeConnection(); // black
-                } else {
-                  newConnection.setAsUndefinedConnection(); // red
-                }
-                defaultConnections.push(newConnection);
+              // determine which Panel is P2
+              const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
+              const newConnection = new Connection({
+                p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
+                p2: p2name,
+                center: intersectCenter,
+                ilength: Math.max(...isize.toArray()),
+              });
+              if (this.$store.state.User.isAdesigner && this.init) {
+                newConnection.setAsFreeConnection(); // black
+              } else {
+                newConnection.setAsUndefinedConnection(); // red
               }
+              defaultConnections.push(newConnection);
             }
           }
         }
@@ -120,8 +120,8 @@ export default {
       this.init = false;
       return defaultConnections;
     },
-    generateAllConnections(connections = this.connections) {
-      const defaultConnections = this.generateDefaultConnections();
+    generateAllConnections(recalcAll = false, connections = this.connections) {
+      const defaultConnections = this.generateDefaultConnections(recalcAll);
       const newConnections = new Array(defaultConnections.length);
       for (let i = 0; i < defaultConnections.length; i += 1) {
         const dConnection = defaultConnections[i];
@@ -141,11 +141,11 @@ export default {
       }
       return newConnections;
     },
-    async setConnections() {
+    async setConnections(recalcAll = false) {
       // use for re-calculate the center position of each connections
       // also set free connections
       await this.$nextTick();
-      this.$store.commit('Panels/setConnections', { connlist: this.generateAllConnections() });
+      this.$store.commit('Panels/setConnections', { connlist: this.generateAllConnections(recalcAll) });
     },
   },
 };

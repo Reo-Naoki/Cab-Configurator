@@ -51,7 +51,7 @@
 /* eslint-disable camelcase */
 import { mapGetters, mapState } from 'vuex';
 import EventBus from '../../../../EventBus/EventBus';
-import sendMessage from '../../../../../api/postMessage';
+import { sendMessage } from '../../../../../api/postMessage';
 
 
 export default {

@@ -64,7 +64,7 @@ export default class {
   }
 
   p2Neighbour({ p1, p2 }) {
-    return (Number(p1) === this.p2 && Number(p2) !== this.p1) || (Number(p2) === this.p1 && Number(p2) !== this.p1);
+    return (Number(p1) === this.p2 && Number(p2) !== this.p1) || (Number(p2) === this.p2 && Number(p2) !== this.p1);
   }
 
   get isRealConnection() {

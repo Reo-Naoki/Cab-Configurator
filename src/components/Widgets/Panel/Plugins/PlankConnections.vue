@@ -45,6 +45,8 @@ export default {
     connectionsWherePanelIsP1() {
       return this.connections.filter(c => c.p1 === Number(this.plankID))
         .filter((c) => {
+          if (c.isHidden) return false;
+          if (!window.panels[c.p1].visible || !window.panels[c.p2].visible) return false;
           if (this.selectedObject3D) {
             const selectedObject = this.selectedObject3D.object3d;
             let selectedGroupName = null;
@@ -53,14 +55,14 @@ export default {
             } else if (!selectedObject.isGroup && !selectedObject.isGroupArrow) {
               selectedGroupName = window.panels[selectedObject.name.split('_')[0]].groupName;
             } else if (selectedObject.isGroup) {
-              selectedGroupName = window.groups[selectedObject.name].groupName;
+              selectedGroupName = selectedObject.name;
             } else if (selectedObject.isGroupArrow) {
-              const id = selectedObject.isCoordinate ? selectedObject.name.split('_coordinate')[0] : selectedObject.name.split('_dimensions')[0];
-              selectedGroupName = window.groups[id].groupName;
-            }
+              selectedGroupName = selectedObject.isCoordinate ? selectedObject.name.split('_coordinate')[0] : selectedObject.name.split('_dimensions')[0];
+            } else selectedGroupName = selectedObject.groupName;
+
             if (selectedGroupName) {
-              return (window.panels[c.p1].groupName === selectedGroupName
-                  && window.panels[c.p2].groupName === selectedGroupName);
+              return ((window.panels[c.p1].groupName === selectedGroupName
+                    || window.panels[c.p2].groupName === selectedGroupName) && window.panels[c.p1].isChildOf(selectedGroupName) && window.panels[c.p2].isChildOf(selectedGroupName));
             }
           }
 

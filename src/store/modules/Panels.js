@@ -15,11 +15,33 @@ const state = {
   layers: [],
   enableMoving: false,
   enableResizing: false,
+  enableMeasure: false,
+  enableShapeEdit: false,
+  enableCreatePoint: false,
+  rulerStartPoint: new Vector3(0, 0, 0),
+  rulerEndPoint: new Vector3(0, 0, 0),
+  rulerPointStep: 0,
   moveDirection: null,
   price: '---',
   prevPosition: null,
   prevDimension: null,
 };
+
+function initEnableState() {
+  state.enableMoving = false;
+  state.enableResizing = false;
+  state.enableMeasure = false;
+  state.enableShapeEdit = false;
+  state.enableCreatePoint = false;
+}
+
+function setRulerEndPoint(point) {
+  state.rulerEndPoint = state.rulerStartPoint.clone();
+  if (!point) return;
+  if (!state.moveDirection || state.moveDirection === 'x') state.rulerEndPoint.setX(point.x);
+  if (!state.moveDirection || state.moveDirection === 'y') state.rulerEndPoint.setY(point.y);
+  if (!state.moveDirection || state.moveDirection === 'z') state.rulerEndPoint.setZ(point.z);
+}
 
 const getters = {
   connections: s => s.connections.reduce((acc, current) => {
@@ -43,22 +65,26 @@ const getters = {
 
     const newPanels = panels.map((p) => {
       const panel = p;
-      const { resizable } = panel;
+      const { resizable, points } = panel;
       // delete panel.groupName;
       // delete panel.groupType;
       // delete panel.resizable;
       // if (panel.layer === 'Structure') delete panel.layer;
-      return {
-        ...panel,
+      const newPanel = {
         x: panel.x,
         y: panel.y,
         thick: panel.thick,
         ptype: resizable ? panel.ptype : `Hard-${panel.ptype}`,
         name: panel.name,
+        points: panel.points,
         pos: panel.pos,
         material: panel.material,
         id: panel.id,
+        edges: panel.edges,
       };
+      if (panel.layer !== 'Structure') newPanel.layer = panel.layer;
+      if (points && points !== [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]]) newPanel.points = points;
+      return newPanel;
     });
     groups.forEach(group => newPanels.push(group));
 
@@ -75,6 +101,7 @@ const getters = {
 
 const mutations = {
   setPanels(s, panels) {
+    initEnableState();
     s.panels = [];
     s.groups = [];
     panels.forEach((p) => {
@@ -82,6 +109,7 @@ const mutations = {
         const resizable = !p.ptype.includes('Hard');
         s.panels.push({
           ...p,
+          points: p.points || (p.ptype === 'VDP' ? [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]] : null),
           ptype: resizable ? p.ptype : p.ptype.split('-')[1],
           id: p.id.split('-')[0],
           material: p.material.toString(),
@@ -124,6 +152,7 @@ const mutations = {
   addPanel(s, p) {
     Vue.set(s.panels, s.panels.length, {
       ...p,
+      points: [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]],
       id: p.id.split('-')[0],
       material: p.material.toString(),
       layer: 'Structure',
@@ -156,8 +185,7 @@ const mutations = {
       this.dispatch('Panels/deletePanelConnections', { id: s.panels[index].id });
     }
 
-    s.panels[index][key] = newData;
-    // Vue.set(s.panels[index], key, newData);
+    Vue.set(s.panels[index], key, newData);
   },
   deletePanel(s, { id, save = false }) {
     const index = s.panels.findIndex(p => String(p.id) === String(id));
@@ -174,11 +202,45 @@ const mutations = {
     }
   },
   enableMoving(s, isEnable = true) {
+    initEnableState();
     s.enableMoving = isEnable;
     s.moveDirection = null;
   },
   enableResizing(s, isEnable = true) {
+    initEnableState();
     s.enableResizing = isEnable;
+  },
+  enableMeasure(s, isEnable = true) {
+    initEnableState();
+    s.enableMeasure = isEnable;
+    s.rulerStartPoint = new Vector3(0, 0, 0);
+    s.rulerEndPoint = new Vector3(0, 0, 0);
+    s.rulerPointStep = 0;
+  },
+  enableShapeEdit(s, isEnable = true) {
+    initEnableState();
+    s.enableShapeEdit = isEnable;
+  },
+  enableCreatePoint(s, isEnable = true) {
+    s.enableCreatePoint = isEnable;
+  },
+  setRulerPoint(s, { point, move = true }) {
+    if (move && s.rulerPointStep === 1) {
+      setRulerEndPoint(point);
+    } else if (!move) {
+      setRulerEndPoint(point);
+
+      if (point) {
+        if (s.rulerPointStep === 0) {
+          s.rulerStartPoint = new Vector3(point.x, point.y, point.z);
+        } else {
+          s.moveDirection = null;
+        }
+      }
+
+      s.rulerPointStep += 1;
+      s.rulerPointStep %= 2;
+    }
   },
   setMoveDirection(s, direction = null) {
     s.moveDirection = direction;
@@ -194,13 +256,12 @@ const mutations = {
     for (let i = 0; i < s.connections.length; i += 1) {
       if (s.connections[i].type === 'hinged') {
         const c = s.connections[i];
-        const p1HasRealConnection = s.connections.some(conn => c.p1Neighbour(conn) && conn.isRealConnection);
-        const p2HasRealConnection = s.connections.some(conn => c.p2Neighbour(conn) && conn.isRealConnection);
-
+        const p1HasRealConnection = s.connections.some(conn => c.isP1Neighbour(conn) && conn.isRealConnection);
+        const p2HasRealConnection = s.connections.some(conn => c.isP2Neighbour(conn) && conn.isRealConnection);
         if (p1HasRealConnection && !p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (c.p2Neighbour(conn) && conn.type !== 'hdfgrove') {
+            if (c.isP2Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
@@ -208,7 +269,7 @@ const mutations = {
         } else if (!p1HasRealConnection && p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (c.p1Neighbour(conn) && conn.type !== 'hdfgrove') {
+            if (c.isP1Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
@@ -229,13 +290,13 @@ const mutations = {
       const connIndex = (index + i) % s.connections.length;
       if (s.connections[connIndex].type === 'hinged') {
         const c = s.connections[connIndex];
-        const p1HasRealConnection = s.connections.some(conn => c.p1Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
-        const p2HasRealConnection = s.connections.some(conn => c.p2Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
+        const p1HasRealConnection = s.connections.some(conn => c.isP1Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
+        const p2HasRealConnection = s.connections.some(conn => c.isP2Neighbour(conn) && conn.isRealConnection && !conn.isHingedConnection);
 
         if (p1HasRealConnection && !p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (c.p2Neighbour(conn) && conn.type !== 'hdfgrove') {
+            if (c.isP2Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
@@ -243,7 +304,7 @@ const mutations = {
         } else if (!p1HasRealConnection && p2HasRealConnection) {
           for (let conni = 0; conni < s.connections.length; conni += 1) {
             const conn = s.connections[conni];
-            if (c.p1Neighbour(conn) && conn.type !== 'hdfgrove') {
+            if (c.isP1Neighbour(conn) && conn.type !== 'hdfgrove') {
               s.connections[conni] = new Connection({ ...s.connections[conni], type: 'free' });
             }
           }
@@ -256,54 +317,57 @@ const mutations = {
     if (index < 0) return;
     Vue.delete(s.connections, index);
   },
+  hideConnection(s, { p1, p2 }) {
+    const index = s.connections.findIndex(e => String(e.p1) === String(p1) && String(e.p2) === String(p2));
+    if (index < 0) return;
+    Vue.set(s.connections[index], 'isHidden', true);
+  },
   setPrice(s, price = '---') {
     s.price = String(price);
   },
 };
 
 const actions = {
-  deserialize(context, data) {
+  async deserialize(context, data) {
+    await context.dispatch('DisplayManager/hideItems', ['connections'], { root: true });
     // use on initial loading, and undo/redo
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve) => {
       const {
-        rlist = [], connlist = [], materials = [], options = {},
+        rlist = [], connlist = [], materials = [],
       } = data;
-      const { initMaterials = false } = options;
-      if (initMaterials) {
-        // setMaterials will request for colors, we should only use it during initial loading
-        // or explicit occasion
-        try {
-          await context.dispatch('materials/setMaterials', materials, { root: true });
-        } catch (e) {
-          reject(e);
-          return;
-        }
-      } else {
-        // set materials only (no colors handling)
-        context.commit('materials/setMaterials', materials, { root: true });
-      }
+
+      context.dispatch('materials/setMaterials', materials, { root: true });
       context.commit('setPanels', rlist);
       context.commit('setConnections', { connlist, createNew: true });
       resolve();
     });
   },
   importRlist(context, data) {
-    // console.log = () => { };
-    // console.warn = () => { };
-    // console.error = () => { };
+    if (context.getters.serialize.rlist.length === 0) {
+      context.dispatch('deserialize', data).then(() => EventBus.$emit('save'));
+      return null;
+    }
+    console.error = {};
     return new Promise(async (resolve) => {
       // use on importing new cabinet
       const serializedData = context.getters.serialize;
       const panelIDs = serializedData.rlist.filter(list => list.ptype !== 'group_stddrawer').map(list => Number(list.id));
-      const panelPosXs = serializedData.rlist.filter(list => list.ptype !== 'group_stddrawer').map(list => list.pos[0]);
       const materialIDs = serializedData.materials.map(material => Number(material.id));
       const newStartPID = Math.max(...panelIDs) + 1;
-      const newStartPosX = Math.max(...panelPosXs);
       const newStartMID = Math.max(...materialIDs) + 1;
       const newRlist = serializedData.rlist;
       const newConnlist = serializedData.connlist;
-      const newMaterials = serializedData.materials;
+      const newMaterials = Array.from(serializedData.materials);
       const newNameTable = {};
+      let newStartPosX = 0;
+
+      if (window.root) {
+        const worldBB = new Vector3();
+        const centerBB = new Vector3();
+        ((new Box3()).setFromObject(window.root.inst)).getSize(worldBB);
+        ((new Box3()).setFromObject(window.root.inst)).getCenter(centerBB);
+        newStartPosX = (centerBB.x + worldBB.x / 2) / 10 + (worldBB.x > 0 ? 500 : 0); // don't forget to downscale to mm
+      }
 
       let newGroupIDs = [];
       let newGroup = {};
@@ -339,7 +403,7 @@ const actions = {
       isValid = false;
       newRlist.forEach((list) => {
         if (list.ptype === 'group_stddrawer') {
-          newGroup.rlist.push({ name: list.name, ptype: list.ptype });
+          if (!list.groupName) newGroup.rlist.push({ name: list.name, ptype: list.ptype });
         } else if (!groupedPanels.find(panel => panel.id.split('-')[0] === list.id.split('-')[0])) {
           newGroup.rlist.push(list);
           isValid = true;
@@ -394,7 +458,7 @@ const actions = {
             ...p,
             id: (Number(p.id.split('-')[0]) + newStartPID).toString(),
             material: Number(p.material) > 0 ? (Number(p.material) + newStartMID).toString() : p.material,
-            pos: [p.pos[0] + newStartPosX + 500, p.pos[1], p.pos[2]],
+            pos: [p.pos[0], p.pos[1] + newStartPosX, p.pos[2]],
           });
         }
       });
@@ -499,6 +563,19 @@ const actions = {
 
     panelConnections.forEach(c => commit('deleteConnection', c));
   },
+  hidePanelConnections(context, { id, exceptPanelIDs = null }) {
+    // delete every connections related to the ID panel
+    const { state: s, commit } = context;
+    const idStr = id.toString();
+    let panelConnections;
+    if (exceptPanelIDs) {
+      panelConnections = s.connections.filter(e => (e.p1.toString() === idStr && !exceptPanelIDs.includes(e.p2.toString())) || (e.p2.toString() === idStr && !exceptPanelIDs.includes(e.p1.toString())));
+    } else {
+      panelConnections = s.connections.filter(e => e.p1.toString() === idStr || e.p2.toString() === idStr);
+    }
+
+    panelConnections.forEach(c => commit('hideConnection', c));
+  },
   deletePanel(context, id) {
     // deleting panels means also removing related connections
     return new Promise(async (resolve, reject) => {
@@ -531,8 +608,10 @@ const actions = {
     if (window.root) {
       // root is the global group ThreeJS object
       const worldBB = new Vector3();
+      const centerBB = new Vector3();
       ((new Box3()).setFromObject(window.root.inst)).getSize(worldBB);
-      panelPosition.setZ(worldBB.z / 10); // don't forget to downscale to mm
+      ((new Box3()).setFromObject(window.root.inst)).getCenter(centerBB);
+      panelPosition.setZ((centerBB.z + worldBB.z / 2) / 10 + (worldBB.z > 0 ? 500 : 0)); // don't forget to downscale to mm
     }
     context.commit('addPanel', {
       x: 350,

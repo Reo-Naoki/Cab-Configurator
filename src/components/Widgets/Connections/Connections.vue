@@ -64,7 +64,8 @@ export default {
       return browsing.name;
     },
     generateDefaultConnections(recalcAll = false) {
-      const panels = Object.values(window.panels).map(p => p.$refs.panel.inst);
+      const panels = Object.values(window.panels);
+      const panelInsts = panels.map(p => p.$refs.panel.inst);
       let defaultConnections = [];
       const selectedObject = this.selectedObject3D ? this.selectedObject3D.object3d : null;
       let selectedIDs = null;
@@ -77,19 +78,11 @@ export default {
       }
 
       for (let i = 0; i < panels.length; i += 1) {
-        const currentPanel = Object.values(window.panels)[i].isDoorPanel ? Object.values(window.panels)[i].$refs.magneticBoundingBox.inst : panels[i];
-        currentPanel.updateMatrixWorld();
-        currentPanel.geometry.computeBoundingBox();
-        const currentBB = currentPanel.geometry.boundingBox.clone();
-        currentBB.setFromObject(currentPanel);
+        const currentBB = panels[i].getBoundingBox();
 
         for (let y = i + 1; y < panels.length; y += 1) {
-          if (!selectedIDs || selectedIDs.includes(panels[i].name) || selectedIDs.includes(panels[y].name)) {
-            const browsingPanel = Object.values(window.panels)[y].isDoorPanel ? Object.values(window.panels)[y].$refs.magneticBoundingBox.inst : panels[y];
-            browsingPanel.updateMatrixWorld();
-            browsingPanel.geometry.computeBoundingBox();
-            const browsingBB = browsingPanel.geometry.boundingBox.clone();
-            browsingBB.setFromObject(browsingPanel);
+          if (!selectedIDs || selectedIDs.includes(panelInsts[i].name) || selectedIDs.includes(panelInsts[y].name)) {
+            const browsingBB = panels[y].getBoundingBox();
 
             if (browsingBB.intersectsBox(currentBB)) {
               // get intersect of the two boundingBox (don't forget to clone currentBB before intersect)
@@ -100,9 +93,9 @@ export default {
               intersectBB.getSize(isize);
 
               // determine which Panel is P2
-              const p2name = this.getFemalePanelName({ currentBB, mesh: panels[i] }, panels[y], intersectCenter);
+              const p2name = this.getFemalePanelName({ currentBB, mesh: panelInsts[i] }, panelInsts[y], intersectCenter);
               const newConnection = new Connection({
-                p1: panels[i].name === p2name ? panels[y].name : panels[i].name,
+                p1: panelInsts[i].name === p2name ? panelInsts[y].name : panelInsts[i].name,
                 p2: p2name,
                 center: intersectCenter,
                 ilength: Math.max(...isize.toArray()),
@@ -134,6 +127,7 @@ export default {
             ilength: dConnection.ilength,
             p1: dConnection.p1,
             p2: dConnection.p2,
+            isHidden: false,
           });
         } else {
           newConnections[i] = dConnection;

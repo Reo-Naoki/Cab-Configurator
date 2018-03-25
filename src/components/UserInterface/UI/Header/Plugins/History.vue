@@ -24,6 +24,7 @@ export default {
     async undo() {
       if (this.busy) return;
       if (this.index <= 0) return;
+      this.$store.commit('Camera/selectObject3D');
       this.busy = true;
       this.index -= 1;
       await this.$store.dispatch('Panels/deserialize', this.history[this.index]);
@@ -32,6 +33,7 @@ export default {
     async redo() {
       if (this.busy) return;
       if (this.index < 0 || this.index >= this.history.length - 1) return;
+      this.$store.commit('Camera/selectObject3D');
       this.busy = true;
       this.index += 1;
       await this.$store.dispatch('Panels/deserialize', this.history[this.index]);

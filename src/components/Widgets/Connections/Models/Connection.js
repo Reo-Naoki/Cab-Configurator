@@ -59,12 +59,12 @@ export default class {
     return (Number(panelID) === this.p1 || Number(panelID) === this.p2);
   }
 
-  p1Neighbour({ p1, p2 }) {
+  isP1Neighbour({ p1, p2 }) {
     return (Number(p1) === this.p1 && Number(p2) !== this.p2) || (Number(p2) === this.p1 && Number(p1) !== this.p2);
   }
 
-  p2Neighbour({ p1, p2 }) {
-    return (Number(p1) === this.p2 && Number(p2) !== this.p1) || (Number(p2) === this.p2 && Number(p2) !== this.p1);
+  isP2Neighbour({ p1, p2 }) {
+    return (Number(p1) === this.p2 && Number(p2) !== this.p1) || (Number(p2) === this.p2 && Number(p1) !== this.p1);
   }
 
   get isRealConnection() {

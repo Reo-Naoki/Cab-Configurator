@@ -13,7 +13,6 @@
 
 <script>
 import { Vector3 } from 'three';
-// import EventBus from '../../../EventBus/EventBus';
 import PlanksDimensions from '../Models/PlanksDimensions';
 
 export default {
@@ -128,7 +127,7 @@ export default {
       const p = new Vector3(x, y, z);
       const vector = p.project(this.cameraInst);
 
-      vector.x = (vector.x + 1) / 2 * this.domElement.width;
+      vector.x = (vector.x + 1) / 2 * this.domElement.width - 70;
       vector.y = -(vector.y - 1) / 2 * this.domElement.height + 20;
 
       return vector;
@@ -262,9 +261,8 @@ export default {
         }
       }
 
-      newDimension = { width: Math.round(newDimension.width), height: Math.round(newDimension.height), depth: Math.round(newDimension.depth) };
-
       if (newDimension) {
+        newDimension = { width: Math.round(newDimension.width), height: Math.round(newDimension.height), depth: Math.round(newDimension.depth) };
         let dimensionX;
         let dimensionY;
         let key;

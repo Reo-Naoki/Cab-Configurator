@@ -7,7 +7,7 @@ export default {
   mixins: [VerticalPanel],
   data() {
     return {
-      dimensionsMarginBottom: 40,
+      dimensionsMarginBottom: 20,
       dimensionsMarginLeft: 15,
       dimensionsMarginTop: 15,
       dimensionsMarginRight: 15,

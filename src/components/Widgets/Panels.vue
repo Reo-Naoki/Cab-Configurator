@@ -11,16 +11,18 @@
              v-bind="group"
              :index="index" />
     </vgl-group>
+    <Ruler v-if="enableMeasure" :begin="rulerStartPoint" :end="rulerEndPoint"/>
     <drag-controls camera="camera1"
-                   :enable-moving="enableMoving"
-                   :enable-resizing="enableResizing"
                    @hoveron="handleOverOn"
                    @hoveroff="handleOverOff"
                    @dragstart="handleDragStart"
-                   @hovermove="handleHoverMove"
+                   @dragmove="handleMove"
                    @dragend="handleDragEnd"
                    @dragcancel="handleDragCancel"
-                   @move="handleMove" />
+                   @hovermove="handleHoverMove"
+                   @rulerpoint="handleRulerPoint"
+                   @rulermove="handleRulerMove"
+                   @createpoint="handleCreatePoint" />
     <Connections ref="connections"/>
   </div>
 </template>
@@ -32,6 +34,7 @@ import Group from './Panel/Group';
 import DragControls from '../Controls/DragControls';
 import EventBus from '../EventBus/EventBus';
 import Connections from './Connections/Connections';
+import Ruler from './Ruler/Ruler';
 
 export default {
   name: 'Panels',
@@ -41,6 +44,7 @@ export default {
     Panel,
     Group,
     DragControls,
+    Ruler,
   },
   computed: {
     ...mapState('Panels', [
@@ -48,6 +52,11 @@ export default {
       'groups',
       'enableMoving',
       'enableResizing',
+      'enableMeasure',
+      'enableShapeEdit',
+      'rulerStartPoint',
+      'rulerEndPoint',
+      'rulerPointStep',
       'prevPosition',
       'prevDimension',
     ]),
@@ -58,6 +67,7 @@ export default {
   created() {
     window.panels = {};
     window.groups = {};
+    window.verticeCoordinates = {};
     this.setStoreWatcher();
   },
   mounted() { window.root = this.$refs.root; },
@@ -70,6 +80,7 @@ export default {
     return {
       panelsMutationWatcher: () => {},
       panelsActionWatcher: () => {},
+      isDragging: false,
       readyCount: 0,
       init: false,
     };
@@ -90,20 +101,35 @@ export default {
       let object3d = selected;
       const { name } = object3d;
 
-      // console.log('click on Object3D', object3d);
+      if (this.enableShapeEdit) {
+        this.$store.commit('Camera/selectObject3D', { object3d });
+        if (object3d.isCoordinate) {
+          this.$store.commit('Panels/setPrevPosition', window.verticeCoordinates[name.split('_coordinate')[0]].position);
+          this.$store.commit('Panels/setPrevDimension', window.panels[name.split('_')[0]].dimension);
+          window.panels[object3d.name.split('_')[0]].setDragging(true);
+        }
+        return;
+      }
+
       let groupName = null;
       if (object3d.isPanel) ({ groupName } = window.panels[name]);
       if (object3d.isGroup) ({ groupName } = window.groups[name]);
 
       if ((object3d.isPanel || object3d.isGroup) && groupName) {
         const selectedName = this.selectedObject3D && this.selectedObject3D.object3d.name;
-        // let parentSelected = false;
+        let parentName = null;
+
+        if (this.selectedObject3D) {
+          if (this.selectedObject3D.object3d.isPanel && window.panels[selectedName].groupName) parentName = window.panels[selectedName].groupName;
+          else if (this.selectedObject3D.object3d.isGroup && this.selectedObject3D.object3d.groupName) parentName = this.selectedObject3D.object3d.groupName;
+        }
+
         let unselectedName = null;
         if (this.selectedObject3D && object3d.isPanel && window.panels[object3d.name].isSelected) {
           ({ object3d } = this.selectedObject3D);
         } else {
           while (groupName) {
-            if (selectedName === window.groups[groupName].name) break;
+            if (selectedName === window.groups[groupName].name || parentName === window.groups[groupName].name) break;
             unselectedName = window.groups[groupName].name;
             ({ groupName } = window.groups[groupName]);
           }
@@ -151,11 +177,19 @@ export default {
       // position is a ThreeJS value
       // the plank position has to be unfix so it can be applied to the data itself
       // for that purpose, we ask the plank component to perform the movement
+      this.isDragging = true;
       const {
         event, selected, position, magnetism,
       } = payload;
 
       const { name } = this.selectedObject3D.object3d;
+
+      if (this.enableShapeEdit) {
+        if (this.selectedObject3D.object3d.isCoordinate) {
+          window.panels[name.split('_')[0]].move(event, position, this.selectedObject3D.object3d, magnetism);
+        }
+        return;
+      }
 
       if (this.selectedObject3D.object3d.isPanel) {
         window.panels[name].move(event, position, this.selectedObject3D.object3d, magnetism);
@@ -175,9 +209,16 @@ export default {
     },
     handleDragEnd(object3d) {
       // save history
+      const { name } = object3d;
+
+      if (this.enableShapeEdit) {
+        window.panels[name.split('_')[0]].setDragging(false);
+        this.$refs.connections.setConnections().then(() => EventBus.$emit('save'));
+        return;
+      }
+
       if (this.selectedObject3D.object3d.isGroup) window.groups[this.selectedObject3D.object3d.name].setDragging(false);
 
-      const { name } = object3d;
       if (object3d.isPanel) {
         window.panels[object3d.name].setDragging(false);
       } else {
@@ -194,10 +235,12 @@ export default {
         }
       }
 
+      this.isDragging = false;
       this.$refs.connections.setConnections().then(() => EventBus.$emit('save'));
     },
     handleDragCancel() {
       // save history
+      this.isDragging = false;
       EventBus.$emit('cancel');
     },
     handlePanelsReady() {
@@ -211,11 +254,36 @@ export default {
         this.init = true;
       }
     },
+    handleRulerPoint({ event, rulerPoint }) {
+      if (!event) return;
+      if (Object.values(window.panels).length > 0) {
+        if (this.rulerPointStep === 0) this.handleOverOn();
+        else this.handleOverOff();
+        Object.values(window.panels)[0].setRuler(event, rulerPoint, false);
+      }
+    },
+    handleRulerMove({ event, rulerPoint }) {
+      if (!event) return;
+      if (Object.values(window.panels).length > 0) Object.values(window.panels)[0].setRuler(event, rulerPoint);
+    },
+    handleCreatePoint(point) {
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+      window.panels[id].createPoint(point);
+    },
     setStoreWatcher() {
       this.panelsMutationWatcher = this.$store.subscribe((mutation) => {
         if (mutation.type === 'Panels/updateConnection') {
           const self = this;
           this.$nextTick(() => self.$refs.connections.setConnections().then(() => EventBus.$emit('save')));
+        } else if (mutation.type === 'Panels/enableMeasure') {
+          if (!this.isDragging) return;
+          const appDiv = this.vglNamespace.renderers[0].inst.domElement;
+          const auxclickEvent = new MouseEvent('auxclick', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+          });
+          appDiv.dispatchEvent(auxclickEvent);
         }
       });
       this.panelsActionWatcher = this.$store.subscribeAction({

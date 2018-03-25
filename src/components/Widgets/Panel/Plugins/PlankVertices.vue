@@ -1,13 +1,19 @@
 <template>
   <vgl-group>
-    <div v-for="(vertex, index) in vertices" :key="`${vertex.name}(${index})`">
+    <div v-for="vertex in vertices" :key="vertex.name">
       <div v-if="vertex.visible">
         <vgl-sphere-geometry
-          :name="`${vertex.name}vertex-geometry${index}`"
+          :name="`${vertex.name}vertex-geometry`"
           :radius="sizeByDistanceToCamera(vertex.position)"
           :width-segments="6"
           :height-segments="6" />
-        <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry${index}`" v-bind="vertex" />
+        <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry`" v-bind="vertex" />
+        <VerticeCoordinate v-if="showCoordinateArrows(vertex.name)"
+          :vertice-name="vertex.name"
+          :plank-position.sync="position"
+          :plank-dimension.sync="dimensionsByType"
+          :vertice-position="vertex.position"
+          :shape-points.sync="shapePoints" />
       </div>
     </div>
   </vgl-group>
@@ -18,9 +24,13 @@ import Vue from 'vue';
 import { mapState } from 'vuex';
 import { Vector3 } from 'three';
 import EventBus from '../../../EventBus/EventBus';
+import VerticeCoordinate from './VerticeCoordinate';
 
 export default {
   name: 'PlankVertices',
+  components: {
+    VerticeCoordinate,
+  },
   inject: ['vglNamespace'],
   props: {
     plankName: {
@@ -39,6 +49,10 @@ export default {
       type: String,
       required: true,
     },
+    plankPoints: {
+      type: Array,
+      required: false,
+    },
     radius: {
       type: Number,
       default: 1,
@@ -52,30 +66,14 @@ export default {
   },
   data() {
     return {
-      showVertices: {
-        // UpperFrontLeft   : false
-        // UpperFrontRight  : false
-        // LowerFrontLeft   : false
-        // LowerFrontRight  : false
-        // UpperBackLeft    : false
-        // UpperBackRight   : false
-        // LowerBackLeft    : false
-        // LowerBackRight   : false
-        // UpperFrontMiddle : false
-        // UpperBackMiddle  : false
-        // LowerFrontMiddle : false
-        // LowerBackMiddle  : false
-        // MiddleFrontLeft  : false
-        // MiddleBackLeft   : false
-        // MiddleFrontRight : false
-        // MiddleBackRight  : false
-      },
+      showVertices: {},
       nearRange: 200,
       magnetRange: 50,
     };
   },
   computed: {
     ...mapState('Panels', [
+      'enableShapeEdit',
       'moveDirection',
       'prevPosition',
     ]),
@@ -91,7 +89,31 @@ export default {
         plankType,
       } = this;
       const namePrefix = `${plankName}_vertex`;
+      const pointVertice = [];
+      if (this.plankPoints && this.plankType === 'VDP') {
+        this.plankPoints.forEach((point, index) => {
+          pointVertice.push({
+            side: `SHAPE${index}M`,
+            name: `${namePrefix}_SHAPE${index}M`,
+            position: `${px} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            visible: this.showShapeVertice || (`SHAPE${index}M` in showVertices ? showVertices[`SHAPE${index}M`] : false),
+          });
+          pointVertice.push({
+            side: `SHAPE${index}L`,
+            name: `${namePrefix}_SHAPE${index}L`,
+            position: `${px - width / 2} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            visible: `SHAPE${index}L` in showVertices ? showVertices[`SHAPE${index}L`] : false,
+          });
+          pointVertice.push({
+            side: `SHAPE${index}R`,
+            name: `${namePrefix}_SHAPE${index}R`,
+            position: `${px + width / 2} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            visible: `SHAPE${index}R` in showVertices ? showVertices[`SHAPE${index}R`] : false,
+          });
+        });
+      }
       return [
+        ...pointVertice,
         { // UpperFrontLeft
           side: 'UFL', name: `${namePrefix}_UFL`, position: `${px - width / 2} ${py + height / 2} ${pz + depth / 2}`, visible: 'UFL' in showVertices ? showVertices.UFL : false,
         },
@@ -172,6 +194,17 @@ export default {
       get() { return this.plankPosition; },
       set(val) { this.$emit('update:plankPosition', val); },
     },
+    dimensionsByType: {
+      get() { return this.plankDimension; },
+      set(val) { this.$emit('update:plankDimension', val); },
+    },
+    shapePoints: {
+      get() { return this.plankPoints; },
+      set(val) { this.$emit('update:plankPoints', val); },
+    },
+    showShapeVertice() {
+      return this.enableShapeEdit && this.selectedObject3D && this.selectedObject3D.object3d.name.split('_')[0] === this.plankName;
+    },
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
     },
@@ -183,17 +216,21 @@ export default {
     this.setAsPlankVertice();
   },
   methods: {
+    showCoordinateArrows(name) {
+      if (!this.enableShapeEdit || !this.selectedObject3D || !this.selectedObject3D.object3d.name.includes('SHAPE')) return false;
+      if (!this.selectedObject3D.object3d.name.includes(name)) return false;
+      return true;
+    },
     verticesInWorld() {
-      const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
-      return Object.values(others)
+      return Object.values(window.panels)
+        .filter(panel => panel.id !== this.plankName)
         .filter(c => c != null) // filter possible removed panels (window.panels might now be accurate)
         .flatMap(c => c.$refs.vertices.$refs.vertices) // flatMap and get a list of every vgl-mesh vertex components
         .map(c => (c ? c.inst : {})) // get only ThreeJS instance of those component
         .filter(inst => inst.visible); // get only visible vertices
     },
     otherVertices(exceptPanels = null) {
-      const { [this.plankName]: current, ...others } = window.panels; // get all panels expect current
-      const optherPanels = Object.values(others).filter((panel) => {
+      const optherPanels = Object.values(window.panels).filter((panel) => {
         if (exceptPanels && exceptPanels.includes(panel.id)) return false;
         return true;
       });
@@ -203,6 +240,9 @@ export default {
         .map(c => c); // get only ThreeJS instance of those component
     },
     sizeByDistanceToCamera(vertexPosition) {
+      if (this.enableShapeEdit) {
+        if (this.selectedObject3D.object3d.name.split('_')[0] === this.plankName) return this.plankDimension.width / 3;
+      }
       const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
       const p = new Vector3(x, y, z);
       return p.distanceTo(this.cameraInst.position) / 120;
@@ -219,7 +259,8 @@ export default {
       const { vertices } = this.$refs;
       if (vertices == null) return;
       for (let i = 0; i < vertices.length; i += 1) {
-        vertices[i].inst.isVertex = true;
+        if (vertices[i].name.includes('SHAPE')) vertices[i].inst.isShapeVertex = true;
+        else vertices[i].inst.isVertex = true;
       }
     },
     setVertexVisibility(name, bool, plankName = null) {
@@ -237,11 +278,11 @@ export default {
     setNearestVerticeVisible(hoveredObject3D, mouse = null) {
       this.resetVerticesVisibility();
 
-      if (hoveredObject3D == null) return;
+      if (!hoveredObject3D && !mouse) return;
 
       let nearestRange = mouse ? this.nearRange : 1000;
 
-      this.vertices.forEach((v) => {
+      this.vertices.filter(vertice => !vertice.side.includes('SHAPE')).forEach((v) => {
         const [x, y, z] = v.position.split(' ').map(pos => parseInt(pos, 10));
         const distance = mouse
           ? mouse.distanceTo(this.projectVectorTo2D(x, y, z))
@@ -590,6 +631,43 @@ export default {
         const { distance } = acc;
         return currentDistance < distance ? { vertex: current, distance: currentDistance } : acc;
       }, null);
+    },
+    createPoint(point) {
+      const points = this.vertices.filter(v => v.side.includes('SHAPE') && v.side.endsWith('M'))
+        .map(vertice => vertice.position.split(' ').map(pos => parseFloat(pos))).map(p => new Vector3(p[0], p[1], p[2]));
+      let minDistance = 100000;
+      let minIndex = -1;
+      points.forEach((p, index) => {
+        const nextIndex = (index + 1) % points.length;
+        const lineLength = p.distanceTo(points[nextIndex]);
+        if (point.distanceTo(p) > lineLength || point.distanceTo(points[nextIndex]) > lineLength) return;
+
+        const D = points[nextIndex].clone().sub(p).normalize();
+        const d = point.clone().sub(p).dot(D);
+        const X = p.clone().add(D.clone().multiplyScalar(d));
+        const distance = point.distanceTo(X);
+
+        if (distance < minDistance) {
+          minIndex = nextIndex;
+          minDistance = distance;
+        }
+      });
+
+      if (minIndex > -1) {
+        const {
+          plankName,
+          plankPosition: { y: py, z: pz },
+          plankDimension: { depth, height },
+        } = this;
+
+        const shapePoints = Array.from(window.panels[plankName].shapePoints);
+        const edges = Array.from(window.panels[plankName].edges.split('-'));
+        shapePoints.splice(minIndex, 0, [parseInt((point.z + depth / 2 - pz) / 10, 10), parseInt((point.y + height / 2 - py) / 10, 10)]);
+        edges.splice(minIndex, 0, '0');
+        window.panels[plankName].shapePoints = shapePoints;
+        window.panels[plankName].edges = edges.join('-');
+        this.$store.commit('Camera/selectObject3D', { object3d: { ...window.panels[plankName], name: plankName, isPanel: true } });
+      }
     },
   },
 };

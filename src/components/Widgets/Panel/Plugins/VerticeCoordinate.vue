@@ -4,6 +4,7 @@
       v-for="(arrow, index) in stringifyArrows" :key="arrow.name + index"
       ref="arrows"
       v-bind="arrow"
+      :length="arrowLength"
       :head-length="arrowHeadLength"
       :head-width="arrowHeadWidth"
       :color="arrowColor"
@@ -17,10 +18,14 @@ import { mapState } from 'vuex';
 // import EventBus from '../../../EventBus/EventBus';
 
 export default {
-  name: 'PlankCoordinate',
+  name: 'VerticeCoordinate',
   inject: ['vglNamespace'],
   props: {
-    plankName: {
+    verticeName: {
+      type: String,
+      required: true,
+    },
+    verticePosition: {
       type: String,
       required: true,
     },
@@ -32,18 +37,14 @@ export default {
       type: Object,
       required: true,
     },
-    isGroupArrow: {
-      type: Boolean,
-      default: false,
-    },
-    groupName: {
-      type: String,
-      required: false,
+    shapePoints: {
+      type: Array,
+      required: true,
     },
   },
   mounted() {
     this.addElementsToDOM();
-    this.setAsPlankCoordinateHelper();
+    this.setAsverticeCoordinateHelper();
     this.changeEventHandler(true);
     this.vglNamespace.beforeRender.push(this.updateStyle);
     window.mdr = this;
@@ -52,11 +53,16 @@ export default {
     this.changeEventHandler(false);
     this.removeElements();
   },
+  created() {
+    window.verticeCoordinates[this.verticeName] = this;
+  },
   data() {
     return {
-      arrowHeadLength: 800,
-      arrowHeadWidth: 500,
+      arrowLength: 1000,
+      arrowHeadLength: 300,
+      arrowHeadWidth: 200,
       arrowColor: '#808080',
+      magnetRange: 500,
       inputElement: null,
       containerElement: null,
       selectedArrow: null,
@@ -64,63 +70,55 @@ export default {
   },
   computed: {
     ...mapState('Panels', [
+      'panels',
       'prevPosition',
+      'prevDimension',
     ]),
-    centerPivotPos() {
-      if (this.isGroupArrow) return this.prevPosition;
-      return {
-        x: this.prevPosition.x + this.plankDimension.width / 2,
-        y: this.prevPosition.y + this.plankDimension.height / 2,
-        z: this.prevPosition.z + this.plankDimension.depth / 2,
-      };
-    },
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
     },
     cameraInst() {
       return this.vglNamespace.cameras.camera1;
     },
+    position() {
+      return this.stringToVector(this.verticePosition);
+    },
     arrows() {
-      const {
-        plankName, plankPosition, plankDimension,
-      } = this;
-      const prefixName = `${plankName}_coordinate_arrow`;
+      const prefixName = `${this.verticeName}_coordinate_arrow`;
+      const vertPosition = this.position;
+
       return [
         {
           name: `${prefixName}_x`,
           dir: new Vector3(1, 0, 0),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.width / 2 < 4000 ? 5000 : 3000 + plankDimension.width / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          visible: false,
         },
         {
           name: `${prefixName}_y`,
           dir: new Vector3(0, 1, 0),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.height / 2 < 4000 ? 5000 : 3000 + plankDimension.height / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
         },
         {
           name: `${prefixName}_z`,
           dir: new Vector3(0, 0, 1),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.depth / 2 < 4000 ? 5000 : 3000 + plankDimension.depth / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
         },
         {
           name: `${prefixName}_-x`,
           dir: new Vector3(-1, 0, 0),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.width / 2 < 4000 ? 5000 : 3000 + plankDimension.width / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          visible: false,
         },
         {
           name: `${prefixName}_-y`,
           dir: new Vector3(0, -1, 0),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.height / 2 < 4000 ? 5000 : 3000 + plankDimension.height / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
         },
         {
           name: `${prefixName}_-z`,
           dir: new Vector3(0, 0, -1),
-          position: new Vector3(plankPosition.x, plankPosition.y, plankPosition.z),
-          length: plankDimension.depth / 2 < 4000 ? 5000 : 3000 + plankDimension.depth / 2,
+          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
         },
       ];
     },
@@ -133,11 +131,18 @@ export default {
     },
   },
   methods: {
+    stringToVector(position) {
+      const [x, y, z] = position.split(' ').map(v => parseInt(v, 10));
+      return new Vector3(x, y, z);
+    },
+    vectorToString(position) {
+      return `${position.x} ${position.y} ${position.z}`;
+    },
     projectVectorTo2D(x, y, z) {
       const p = new Vector3(x, y, z);
       const vector = p.project(this.cameraInst);
 
-      vector.x = (vector.x + 1) / 2 * this.domElement.width - 70;
+      vector.x = (vector.x + 1) / 2 * this.domElement.width;
       vector.y = -(vector.y - 1) / 2 * this.domElement.height + 30;
 
       return vector;
@@ -151,7 +156,7 @@ export default {
         this.updateStyle();
       }
     },
-    setAsPlankCoordinateHelper() {
+    setAsverticeCoordinateHelper() {
       const { arrows } = this.$refs;
       if (arrows == null) return;
       for (let i = 0; i < arrows.length; i += 1) {
@@ -163,58 +168,76 @@ export default {
         }
       }
     },
-    resize(name, position, vertex, magnetism) {
+    move(name, position, vertex, magnetism) {
       // resize: name is the selected arrow name (1-1_dimension_arrow_upper)
       // resize: position is the mouse position while dragging
       const direction = name.split('_').pop();
       if (vertex && magnetism) {
-        this.resizeLogic(direction, vertex);
+        this.moveLogic(direction, vertex);
       } else {
-        this.resizeLogic(direction, position);
+        this.moveLogic(direction, position);
       }
     },
-    resizeLogic(direction, position) {
-      let newPosition = null;
+    moveLogic(direction, position) {
       let distance = 0;
       this.selectedArrow = direction;
-
+      const verticeIndex = Number(this.verticeName.split('SHAPE')[1].split('M')[0]);
+      let points = this.shapePoints;
       if (direction === 'x' || direction === '-x') {
-        distance = position.x - this.centerPivotPos.x;
-        newPosition = { x: position.x, y: this.plankPosition.y, z: this.plankPosition.z };
+        distance = position.x - this.prevPosition.x;
       } else if (direction === 'y' || direction === '-y') {
-        distance = position.y - this.centerPivotPos.y;
-        newPosition = { x: this.plankPosition.x, y: position.y, z: this.plankPosition.z };
+        distance = position.y - this.prevPosition.y;
+        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
       } else if (direction === 'z' || direction === '-z') {
-        distance = position.z - this.centerPivotPos.z;
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: position.z };
+        distance = position.z - this.prevPosition.z;
+        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z + distance) / 10;
       }
 
       this.inputElement.value = distance / 10 * (direction.includes('-') ? -1 : 1);
 
-      this.$emit('update:plankPosition', newPosition);
+      const minX = Math.min(...points.map(p => p[0]));
+      const minY = Math.min(...points.map(p => p[1]));
+      const maxX = Math.max(...points.map(p => p[0]));
+      const maxY = Math.max(...points.map(p => p[1]));
+      const width = (maxX - minX) * 10;
+      const height = (maxY - minY) * 10;
+      points = points.map(p => ([p[0] - minX, p[1] - minY]));
+      this.$emit('update:shapePoints', points);
+      this.$emit('update:plankDimension', { depth: width, height, width: this.plankDimension.width });
+      this.$emit('update:plankPosition', { x: this.plankPosition.x, y: this.plankPosition.y + minY * 10, z: this.plankPosition.z + minX * 10 });
     },
     moveByDistance(direction, distance) {
-      let newPosition = null;
-
-      if (direction === 'x') {
-        newPosition = { x: this.centerPivotPos.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
-      } else if (direction === '-x') {
-        newPosition = { x: this.centerPivotPos.x - distance, y: this.plankPosition.y, z: this.plankPosition.z };
+      this.selectedArrow = direction;
+      const verticeIndex = Number(this.verticeName.split('SHAPE')[1].split('M')[0]);
+      let points = this.shapePoints;
+      if (direction === 'x' || direction === '-x') {
+        // points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
       } else if (direction === 'y') {
-        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y + distance, z: this.plankPosition.z };
+        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
       } else if (direction === '-y') {
-        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y - distance, z: this.plankPosition.z };
+        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y - distance) / 10;
       } else if (direction === 'z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z + distance };
+        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z + distance) / 10;
       } else if (direction === '-z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z - distance };
+        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z - distance) / 10;
       }
 
-      this.$emit('update:plankPosition', newPosition);
+      this.inputElement.value = distance / 10 * (direction.includes('-') ? -1 : 1);
+
+      const minX = Math.min(...points.map(p => p[0]));
+      const minY = Math.min(...points.map(p => p[1]));
+      const maxX = Math.max(...points.map(p => p[0]));
+      const maxY = Math.max(...points.map(p => p[1]));
+      const width = (maxX - minX) * 10;
+      const height = (maxY - minY) * 10;
+      points = points.map(p => ([p[0] - minX, p[1] - minY]));
+      this.$emit('update:shapePoints', points);
+      this.$emit('update:plankDimension', { depth: width, height, width: this.plankDimension.width });
+      this.$emit('update:plankPosition', { x: this.plankPosition.x, y: this.plankPosition.y + minY * 10, z: this.plankPosition.z + minX * 10 });
     },
     createInput() {
       const inputField = document.createElement('input');
-      inputField.classList.add('plank-coordinate-input');
+      inputField.classList.add('vertice-coordinate-input');
       inputField.setAttribute('type', 'number');
       inputField.defaultValue = '';
 
@@ -223,32 +246,33 @@ export default {
     updateStyle() {
       this.inputElement.style.display = this.selectedArrow ? 'unset' : 'none';
       this.inputElement.value = this.selectedArrow ? this.inputElement.value : '0';
+      const vertPosition = this.stringToVector(this.verticePosition);
 
       if (this.selectedArrow) this.inputElement.focus();
       const inputPosition = new Vector3(
-        this.plankPosition.x,
-        this.plankPosition.y,
-        this.plankPosition.z,
+        vertPosition.x,
+        vertPosition.y,
+        vertPosition.z,
       );
 
       switch (this.selectedArrow) {
         case 'x':
-          inputPosition.x += this.arrows[0].length;
+          inputPosition.x += this.arrowLength;
           break;
         case '-x':
-          inputPosition.x -= this.arrows[0].length;
+          inputPosition.x -= this.arrowLength;
           break;
         case 'y':
-          inputPosition.y += this.arrows[1].length;
+          inputPosition.y += this.arrowLength;
           break;
         case '-y':
-          inputPosition.y -= this.arrows[1].length;
+          inputPosition.y -= this.arrowLength;
           break;
         case 'z':
-          inputPosition.z += this.arrows[2].length;
+          inputPosition.z += this.arrowLength;
           break;
         case '-z':
-          inputPosition.z -= this.arrows[2].length;
+          inputPosition.z -= this.arrowLength;
           break;
         default:
           break;
@@ -314,7 +338,7 @@ export default {
 };
 </script>
 <style>
-  .plank-coordinate-input {
+  .vertice-coordinate-input {
     position: absolute;
   }
 </style>

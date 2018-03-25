@@ -1,12 +1,13 @@
 <template>
   <div class="menu-left" @click.stop="">
+    <div v-if="!enableShapeEdit">
     <div class="wrapper-name-panel" v-if="panel != null || group != null">
       <div v-if="panel != null">Planche n°{{ panel.id }}</div>
       <div v-else-if="group != null">Group n°{{ selectedObject3DIndex + 1 }}</div>
-      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()"><i class="el-icon-rank" /></div>
+      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()"><em class="el-icon-rank" /></div>
       <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}${(panel != null && !panel.resizable) || (group != null && !group.resizable) ? ' disabled' :''}`]"
           @click="(panel != null && panel.resizable) || (group != null && group.resizable) ? resizePanel() : null">◱</div>
-      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"><i class="el-icon-delete" /></div>
+      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"><em class="el-icon-delete" /></div>
     </div>
     <EdgesDisplayer />
     <LayerEditor :layers="layers"/>
@@ -16,6 +17,8 @@
     <PositionEditor />
     <ColorEditor />
     <ConnectionEditor />
+    </div>
+    <ShapeEditor v-else/>
   </div>
 </template>
 
@@ -28,6 +31,7 @@ import TypeEditor from './Plugins/TypeEditor';
 import ColorEditor from './Plugins/ColorEditor';
 import EdgesDisplayer from './Plugins/EdgesDisplayer';
 import LayerEditor from './Plugins/LayerEditor';
+import ShapeEditor from './Plugins/ShapeEditor';
 
 export default {
   name: 'PlankEditor',
@@ -39,6 +43,7 @@ export default {
     GroupDimensionEditor,
     EdgesDisplayer,
     LayerEditor,
+    ShapeEditor,
     ConnectionEditor: () => import(/* webpackChunkName: "connection-editor" */ './Plugins/Connection/ConnectionEditor'),
   },
   props: ['layers'],
@@ -48,6 +53,7 @@ export default {
       'groups',
       'enableMoving',
       'enableResizing',
+      'enableShapeEdit',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
@@ -83,11 +89,9 @@ export default {
     },
     movePanel() {
       this.$store.commit('Panels/enableMoving', !this.enableMoving);
-      this.$store.commit('Panels/enableResizing', false);
     },
     resizePanel() {
       this.$store.commit('Panels/enableResizing', !this.enableResizing);
-      this.$store.commit('Panels/enableMoving', false);
     },
     deleteGroup(name) {
       let lastGroup = true;

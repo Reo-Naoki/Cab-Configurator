@@ -10,7 +10,7 @@
       </div>
       <div>
         <div id="ard-2dzoomminus" class="and-margin-icon">
-          <div class="round-icon white" @click="() => { this.showImportBox = true; }"><i class="el-icon-document-add"></i></div>
+          <div class="round-icon white" @click="() => { this.showImportBox = true; }"><em class="el-icon-document-add"/></div>
           <div class="and-text-under-icon">Importer un projet</div>
         </div>
         <div id="ard-2dzoomplus" class="and-margin-icon"></div>

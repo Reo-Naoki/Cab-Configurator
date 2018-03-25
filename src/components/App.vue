@@ -20,6 +20,7 @@
           </vgl-scene>
         </vgl-renderer>
         <DisplayOptions :layers="getLayers"/>
+        <ToolBar />
         <ButtonPlus />
       </div>
     </div>
@@ -38,17 +39,19 @@ import Header from './UserInterface/UI/Header/Header';
 import PlankEditor from './UserInterface/PlankEditor/PlankEditor';
 import ButtonPlus from './UserInterface/UI/ButtonPlus';
 import DisplayOptions from './UserInterface/UI/DisplayOptions/DisplayOptions';
+import ToolBar from './UserInterface/UI/ToolBar/ToolBar';
 
 export default {
   name: 'app',
   components: {
-    DisplayOptions,
     ButtonPlus,
     PlankEditor,
     Header,
     Panels,
     Camera,
     Materials,
+    DisplayOptions,
+    ToolBar,
   },
   props: {
     materials: {

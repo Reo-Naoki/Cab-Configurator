@@ -36,7 +36,7 @@
       <div class="new-round-material-color round-material-color"
            @click="openColorPicker()"
            v-if="position === 'mini' && materials.length">
-        <i class="el-icon-plus" style="flex-grow: 1;"></i>
+        <em class="el-icon-plus" style="flex-grow: 1;"/>
       </div>
       <div class="colorlist-button eel-button white" v-if="!forceFullListed && !hideShowMoreColors">
         <el-checkbox :value="!showShortList"

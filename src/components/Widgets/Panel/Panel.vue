@@ -1,6 +1,6 @@
 <template>
   <vgl-group>
-    <component v-if="isRenderObject" ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate" :visible="isLayerVisible" />
+    <component ref="panel" :is="component" v-bind="[$props, $attrs]" v-on="handleUpdate" :visible="isLayerVisible" />
   </vgl-group>
 </template>
 
@@ -53,13 +53,9 @@ export default {
     isLayerVisible() {
       return this.isItemDisplayed(this.layer);
     },
-    isRenderObject() {
-      if (this.selectedObject3D && this.selectedObject3D.object3d.name === this.groupName) return true;
-      return this.isLayerVisible;
-    },
     component() {
       const connections = this.relatedConnections || [];
-      let doorPanelData = VDoorPanel.data();
+      let doorPanelData;
       const panelPos = this.pos;
       switch (this.ptype) {
         case 'VP':

@@ -19,14 +19,6 @@ export default {
       type: Boolean,
       default: true,
     },
-    enableMoving: {
-      type: Boolean,
-      default: false,
-    },
-    enableResizing: {
-      type: Boolean,
-      default: false,
-    },
   },
   data() {
     return {
@@ -39,6 +31,13 @@ export default {
   computed: {
     ...mapState('Camera', [
       'selectedObject3D',
+    ]),
+    ...mapState('Panels', [
+      'enableMoving',
+      'enableResizing',
+      'enableMeasure',
+      'enableShapeEdit',
+      'enableCreatePoint',
     ]),
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
@@ -86,7 +85,8 @@ export default {
       appDiv.removeEventListener('touchend', this.onDocumentTouchEnd, false);
     },
     objects() {
-      return Object.values(this.vglNamespace.object3ds).filter(obj => obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isPhysicalGeometry || obj.isConnectionBubble);
+      return Object.values(this.vglNamespace.object3ds)
+        .filter(obj => (obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isPhysicalGeometry || obj.isConnectionBubble || (obj.isShapeVertex && this.enableShapeEdit)) && obj.visible);
     },
     childObjects() {
       return this.vglNamespace.object3ds;
@@ -101,8 +101,41 @@ export default {
       this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       this.raycaster.setFromCamera(this.mouse, this.cameraInst);
     },
+    moveStep() {
+      this.domElement.style.cursor = 'move';
+      this.isDragging = true;
+      this.$emit('hoveron');
+    },
+    roundPosition(offset = this.offset) {
+      const position = this.intersection.sub(offset).applyMatrix4(this.inverseMatrix);
+      return {
+        x: Math.round(position.x),
+        y: Math.round(position.y),
+        z: Math.round(position.z),
+      };
+    },
+    setOffset(name) {
+      const selectedObject3D = this.vglNamespace.object3ds[name];
+      if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
+        const matrixWorld = selectedObject3D.parent != null
+          ? selectedObject3D.parent.matrixWorld
+          : selectedObject3D.matrixWorld;
+        this.inverseMatrix.getInverse(matrixWorld);
+        this.offset.copy(this.intersection).sub(this.worldPosition.setFromMatrixPosition(selectedObject3D.matrixWorld));
+      }
+    },
     onDocumentMouseWheel(event) {
       event.preventDefault();
+
+      this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
+        this.selectedObject ? this.worldPosition.setFromMatrixPosition(this.selectedObject.matrixWorld) : new Vector3(0, 0, 0));
+
+      if (this.enableMeasure) {
+        let rulerPoint = null;
+        if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) rulerPoint = this.roundPosition();
+        this.$emit('rulermove', { event, rulerPoint });
+        return;
+      }
 
       this.onDocumentMouseMove(event);
     },
@@ -113,21 +146,63 @@ export default {
       this.prevMousePos.x = event.clientX;
       this.prevMousePos.y = event.clientY;
       this.isDragging = true;
+      this.$emit('hoveroff');
     },
     onDocumentMouseMove(event) {
       event.preventDefault();
       this.setRaycaster(event);
 
+      const intersects = this.raycaster.intersectObjects(this.objects(), true);
+
+      if (this.enableMeasure) {
+        this.plane.setFromNormalAndCoplanarPoint(new Vector3(0, 1, 0), new Vector3(0, 0, 0));
+        let rulerPoint = null;
+
+        if (intersects.length > 0) {
+          rulerPoint = intersects[0].point;
+        } else if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
+          rulerPoint = this.roundPosition(new Vector3(0, 0, 0));
+        }
+
+        this.$emit('rulermove', { event, rulerPoint });
+        this.domElement.style.cursor = 'crosshair';
+        return;
+      }
+      if (this.enableShapeEdit) {
+        if (this.selected && this.selected.isCoordinate) {
+          this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
+            this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
+
+          if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
+            const roundPosition = this.roundPosition();
+            // careful, position will need to be fixed (it's a threejs position)
+            this.$emit('dragmove', {
+              event,
+              selected: this.selected,
+              position: roundPosition,
+              magnetism: !event.shiftKey,
+            });
+          }
+          this.domElement.style.cursor = 'move';
+        } else if (intersects.length > 0) {
+          if (this.enableCreatePoint && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
+            this.domElement.style.cursor = 'copy';
+          } else if (intersects[0].object.isShapeVertex || intersects[0].object.isCoordinate) {
+            this.domElement.style.cursor = 'pointer';
+          } else {
+            this.domElement.style.cursor = 'auto';
+          }
+        } else {
+          this.domElement.style.cursor = 'auto';
+        }
+        return;
+      }
+
       if (this.selected != null && this.enable && ((this.enableMoving && (this.selected.isPanel || this.selected.isCoordinate)) || (this.enableResizing && this.selected.isDimension))) {
         if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
-          const position = this.intersection.sub(this.offset).applyMatrix4(this.inverseMatrix);
-          const roundPosition = {
-            x: Math.round(position.x),
-            y: Math.round(position.y),
-            z: Math.round(position.z),
-          };
+          const roundPosition = this.roundPosition();
           // careful, position will need to be fixed (it's a threejs position)
-          this.$emit('move', {
+          this.$emit('dragmove', {
             event,
             selected: this.selected,
             position: roundPosition,
@@ -136,8 +211,6 @@ export default {
         }
         return;
       }
-
-      const intersects = this.raycaster.intersectObjects(this.objects(), true);
 
       if (intersects.length > 0) {
         const { name } = intersects[0].object;
@@ -163,25 +236,66 @@ export default {
           this.$store.commit('Camera/setHoverObject3D');
         }
 
-        this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal), this.worldPosition.setFromMatrixPosition(object.matrixWorld));
+        this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
+          this.worldPosition.setFromMatrixPosition(object.matrixWorld));
 
         if (this.hoveredObject !== object) {
           this.domElement.style.cursor = 'pointer';
           this.hoveredObject = object;
-          // this.$emit('hoveron', object);
         }
       } else {
-        if (this.hoveredObject !== null) {
-          this.domElement.style.cursor = 'auto';
-          this.hoveredObject = null;
-          // this.$emit('hoveroff', this.hoveredObject);
-        }
+        this.hoveredObject = null;
+        this.domElement.style.cursor = 'auto';
         this.$store.commit('Camera/setHoverObject3D');
       }
     },
     onDocumentMouseClick(event) {
       event.preventDefault();
+      this.setRaycaster(event);
       this.isDragging = false;
+
+      const intersects = this.raycaster.intersectObjects(this.objects(), true);
+
+      if (this.enableMeasure && this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+        this.plane.setFromNormalAndCoplanarPoint(new Vector3(0, 1, 0), new Vector3(0, 0, 0));
+        let rulerPoint = null;
+
+        if (intersects.length > 0) {
+          rulerPoint = intersects[0].point;
+        } else if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
+          rulerPoint = this.roundPosition(new Vector3(0, 0, 0));
+        }
+
+        this.$emit('rulerpoint', { event, rulerPoint });
+        return;
+      }
+      if (this.enableShapeEdit) {
+        if (this.selected) {
+          this.$emit('dragend', this.selected);
+          this.$emit('hoveroff');
+          this.selected = null;
+          this.domElement.style.cursor = 'auto';
+        } else if (intersects.length > 0 && this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+          if (intersects[0].object.isShapeVertex || intersects[0].object.isCoordinate) {
+            this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
+              this.worldPosition.setFromMatrixPosition(intersects[0].object.matrixWorld));
+
+            this.$emit('dragstart', intersects[0].object);
+            this.setOffset(intersects[0].object.name);
+
+            if (intersects[0].object.isCoordinate) {
+              this.selected = intersects[0].object;
+              this.moveStep();
+            }
+          } else if (this.enableCreatePoint && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
+            this.$emit('createpoint', intersects[0].point);
+            this.$store.commit('Panels/enableCreatePoint', false);
+          }
+        } else {
+          this.domElement.style.cursor = 'auto';
+        }
+        return;
+      }
 
       if (this.selected) { // Object was selected and it is moving or resizing
         this.resetMoveResize();
@@ -191,9 +305,6 @@ export default {
 
         this.domElement.style.cursor = this.hoveredObject ? 'pointer' : 'auto';
       } else if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) { // If mouse clicked on same place
-        this.raycaster.setFromCamera(this.mouse, this.cameraInst);
-
-        const intersects = this.raycaster.intersectObjects(this.objects(), true);
         if (intersects.length > 0) {
           const { name } = intersects[0].object;
           const objectID = name.split('_')[0];
@@ -209,27 +320,16 @@ export default {
           if (this.selectedObject3D) this.selectedObject = this.selectedObject3D.object3d;
           this.$emit('dragstart', this.selected);
 
-          const selectedObject3D = this.vglNamespace.object3ds[this.selectedObject3D.object3d.name];
-          if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
-            const matrixWorld = selectedObject3D.parent != null
-              ? selectedObject3D.parent.matrixWorld
-              : selectedObject3D.matrixWorld;
-            this.inverseMatrix.getInverse(matrixWorld);
-            this.offset.copy(this.intersection).sub(this.worldPosition.setFromMatrixPosition(selectedObject3D.matrixWorld));
-          }
+          this.setOffset(this.selectedObject3D.object3d.name);
 
           if (this.selected.isDimension || this.selected.isCoordinate) {
-            this.domElement.style.cursor = 'move';
-            this.isDragging = true;
-            this.$emit('hoveron');
+            this.moveStep();
           } else if (!this.selectedObject || (!this.selectedObject.isDimension && !this.selectedObject.isCoordinate && this.selectedObject3D.object3d !== this.selectedObject)) {
             this.resetMoveResize();
             this.selectedObject = this.selected;
             this.selected = null;
           } else if (this.enableMoving) {
-            this.domElement.style.cursor = 'move';
-            this.isDragging = true;
-            this.$emit('hoveron');
+            this.moveStep();
           } else {
             this.selected = null;
           }
@@ -244,6 +344,28 @@ export default {
     onDocumentRightMouseClick(event) {
       event.preventDefault();
 
+      if (this.enableMeasure) {
+        if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+          this.$store.commit('Panels/enableMeasure', false);
+          this.$store.commit('Panels/setMoveDirection');
+          this.$emit('hoveroff');
+          this.domElement.style.cursor = 'auto';
+        }
+        return;
+      }
+      if (this.enableShapeEdit) {
+        if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+          if (this.enableCreatePoint) {
+            this.$store.commit('Panels/enableCreatePoint', false);
+          } else {
+            this.$store.commit('Panels/enableShapeEdit', false);
+            this.$emit('hoveroff');
+          }
+          this.domElement.style.cursor = 'auto';
+        }
+        return;
+      }
+
       if (this.selected) {
         this.$emit('dragcancel');
         this.$emit('hoveroff');
@@ -251,7 +373,6 @@ export default {
       }
 
       this.isDragging = false;
-      this.resetMoveResize();
       this.domElement.style.cursor = this.hoveredObject ? 'pointer' : 'auto';
     },
     onDocumentTouchMove(event) {
@@ -263,13 +384,8 @@ export default {
 
       if (this.selected && this.enable && this.enableMoving) {
         if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
-          const position = this.intersection.sub(this.offset).applyMatrix4(this.inverseMatrix);
-          const roundPosition = {
-            x: Math.round(position.x),
-            y: Math.round(position.y),
-            z: Math.round(position.z),
-          };
-          this.$emit('move', {
+          const roundPosition = this.roundPosition();
+          this.$emit('dragmove', {
             selected: this.selected,
             position: roundPosition,
           });
@@ -287,7 +403,8 @@ export default {
       if (intersects.length > 0) {
         this.selected = intersects[0].object;
 
-        this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal), this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
+        this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
+          this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
 
         if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
           const matrixWorld = this.selected.parent != null
@@ -313,16 +430,24 @@ export default {
     onDocumentKeyDown(event) {
       event.preventDefault();
 
-      if (this.selected && event.code === 'Escape') {
-        this.onDocumentRightMouseClick(event);
-      } else if (this.selected && event.code === 'ArrowUp') {
-        this.$store.commit('Panels/setMoveDirection', 'y');
-      } else if (this.selected && event.code === 'ArrowLeft') {
-        this.$store.commit('Panels/setMoveDirection', 'x');
-      } else if (this.selected && event.code === 'ArrowRight') {
-        this.$store.commit('Panels/setMoveDirection', 'z');
-      } else if (this.selected && event.code === 'ArrowDown') {
-        this.$store.commit('Panels/setMoveDirection');
+      if (this.selected || this.enableMeasure) {
+        switch (event.code) {
+          case 'Escape':
+            this.onDocumentRightMouseClick(event);
+            break;
+          case 'ArrowUp':
+            this.$store.commit('Panels/setMoveDirection', 'y');
+            break;
+          case 'ArrowLeft':
+            this.$store.commit('Panels/setMoveDirection', 'x');
+            break;
+          case 'ArrowRight':
+            this.$store.commit('Panels/setMoveDirection', 'z');
+            break;
+          case 'ArrowDown':
+          default:
+            this.$store.commit('Panels/setMoveDirection');
+        }
       } else this.$store.commit('Panels/setMoveDirection');
     },
   },

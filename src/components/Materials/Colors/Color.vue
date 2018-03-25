@@ -26,7 +26,7 @@
       <div class="ard-palette-text-card">
         {{getActualColor.fullname}}
       </div>
-      <div v-if="position === 'horizontal'"><i class="el-icon-caret-bottom"></i></div>
+      <div v-if="position === 'horizontal'"><em class="el-icon-caret-bottom"/></div>
     </template>
     <template v-else>
       <div class="flexbox-parents-no-margin ard-palette">

@@ -159,7 +159,7 @@ export default {
       return false;
     },
     boundingBox() {
-      const childPanels = this.getAllChildPanels().map(panel => panel.boundingBox());
+      const childPanels = this.getAllChildPanels().map(panel => panel.getBoundingBox());
       const boundingBox = childPanels[0].clone();
       childPanels.forEach((panel) => {
         boundingBox.expandByPoint(panel.min);
@@ -203,11 +203,7 @@ export default {
     select(isSelected) {
       const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};
 
-      if (!object3d) {
-        // nothing selected.. unselect just in case
-        this.getChildPanels().forEach(panel => panel.$refs.vertices.resetAllVerticesVisibility());
-        this.moving = false;
-      } else if (object3d.isPanel) {
+      if (object3d && object3d.isPanel) {
         if (isSelected) {
           let { groupName } = window.panels[object3d.name];
           let included = false;
@@ -242,14 +238,14 @@ export default {
       mouseScreenPoint.y = event.clientY - rect.top;
 
       if (mesh.isDimension || mesh.isCoordinate) {
-        if (!this.moving) this.deleteConnections();
+        if (!this.moving) this.hideConnections();
         this.moving = true;
 
         const closestVertex = childPanel.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint, this.getAllChildPanelIDs());
 
         this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
       } else if (mesh.isGroup) {
-        if (!this.moving) this.deleteConnections();
+        if (!this.moving) this.hideConnections();
         this.moving = true;
 
         if (magnetism) {
@@ -285,12 +281,12 @@ export default {
       else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
       else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
     },
-    deleteConnections() {
+    hideConnections() {
       this.rlist.forEach((p) => {
         if (p.ptype === 'group_stddrawer') {
-          window.groups[p.name].deleteConnections();
+          window.groups[p.name].hideConnections();
         } else {
-          this.$store.dispatch('Panels/deletePanelConnections', { id: p.id.split('-')[0], exceptPanelIDs: this.getChildPanelIDs() });
+          this.$store.dispatch('Panels/hidePanelConnections', { id: p.id.split('-')[0] });
         }
       });
     },
@@ -298,7 +294,7 @@ export default {
   watch: {
     moving(isMoving, wasMoving) {
       if (isMoving && !wasMoving) {
-        this.deleteConnections();
+        this.hideConnections();
       }
     },
     hoveredObject3D: {

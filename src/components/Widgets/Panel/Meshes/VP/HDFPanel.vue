@@ -1,5 +1,5 @@
 <script>
-import { Vector3, Box3 } from 'three';
+import { Vector3 } from 'three';
 import VerticalPanel from './VerticalPanel';
 
 export default {
@@ -78,13 +78,6 @@ export default {
           thick: depth,
         };
       },
-    },
-    getBoundingBox() {
-      const { left, bottom } = this.hasFeuillure;
-      const { x, y, z } = this.position;
-      const { width, height, depth } = this.dimensionsByType;
-
-      return new Box3(new Vector3(x + (left ? this.dimensionsMarginLeft : 0), y + (bottom ? this.dimensionsMarginBottom : 0), z), new Vector3(x + width, y + height, z + depth));
     },
     isHDFPanel() {
       return true;

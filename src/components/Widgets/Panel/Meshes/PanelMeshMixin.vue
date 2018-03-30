@@ -24,40 +24,40 @@
                 :geometry="id + '_physicalGeometry'"
                 :material="materials"
                 :rotation="shapeSideRotation"
-                :position="`${fixedPosition.x - dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                :position="leftPanelPosition()"
                 :name="id + '_left_physicalGeometry'"
                 :visible="visible" />
       <vgl-mesh ref='rightPhysicalGeometry'
                 :geometry="id + '_physicalGeometry'"
                 :material="materials"
                 :rotation="shapeSideRotation"
-                :position="`${fixedPosition.x + dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                :position="rightPanelPosition()"
                 :name="id + '_right_physicalGeometry'"
                 :visible="visible" />
       <div v-for="(height, index) in shapeHeights()" :key="`${id}_${index}_physicalGeometry`">
-        <vgl-plane-geometry :width="dimensionsByType.width"
+        <vgl-plane-geometry :width="shapeThick()"
                             :height="height"
                             :name="`${id}_${index}_physicalGeometry`" />
         <vgl-mesh :ref="`${index}_physicalGeometry`"
                   :geometry="`${id}_${index}_physicalGeometry`"
                   :material="materials[index + 1]"
                   :rotation="shapeRotations()[index]"
-                  :position="`${shapePositions()[index].x} ${shapePositions()[index].y} ${shapePositions()[index].z}`"
+                  :position="shapePositions(index)"
                   :name="`${id}_${index}_physicalGeometry`"
                   :visible="visible" />
         <vgl-geometry :name="`${id}_${index}_outline`"
-                      :position-attribute="`${-dimensionsByType.width / 2}, ${fixedPoints()[index].y}, ${fixedPoints()[index].x}, ${dimensionsByType.width / 2}, ${fixedPoints()[index].y}, ${fixedPoints()[index].x}`" />
+                      :position-attribute="shapeSegmentLine(index)" />
         <vgl-line-segments :geometry="`${id}_${index}_outline`"
                        :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
                        material="outline" />
       </div>
       <div>
-        <vgl-geometry :name="`${id}_outline`" :position-attribute="this.outline()" />
+        <vgl-geometry :name="`${id}_outline`" :position-attribute="outline()" />
         <vgl-line-loop :geometry="`${id}_outline`"
-                       :position="`${fixedPosition.x - dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                       :position="leftPanelPosition()"
                        material="outline" />
         <vgl-line-loop :geometry="`${id}_outline`"
-                       :position="`${fixedPosition.x + dimensionsByType.width / 2} ${fixedPosition.y} ${fixedPosition.z}`"
+                       :position="rightPanelPosition()"
                        material="outline" />
       </div>
     </div>
@@ -114,14 +114,14 @@
     </vgl-group>
     <!--------------->
 
-    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-name="id" :plank-type="ptype" :plank-points.sync="shapePoints" />
-    <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-name="id" :plank-type="ptype" v-if="showStickers"/>
-    <PlankEdges :plank-dimension="dimensionsByType" :plank-position="fixedPosition" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector" />
-    <PlankCoordinate ref="coordinate" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
-    <PlankDimensions ref="dimensions" :plank-dimension.sync="dimensionsByType" :plank-position.sync="fixedPosition" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
+    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" />
+    <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showStickers"/>
+    <PlankEdges :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector" />
+    <PlankCoordinate ref="coordinate" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
+    <PlankDimensions ref="dimensions" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
-    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-i-d="id" :plank-type="ptype" :connections="relatedConnections" v-if="showConnections" />
-    <ShapeLines :plank-dimension="dimensionsByType" :plank-position="fixedPosition" :plank-points.sync="shapePoints" v-if="enableShapeEdit && isSelected && shapePoints" />
+    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
+    <ShapeLines :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-points.sync="shapePoints" v-if="enableShapeEdit && isSelected && shapePoints" />
     <component v-if="pluginComponent" :is="pluginComponent" v-bind="pluginBinding"/>
 
     <!-- Bounding Box for Magnetic Panel of DoorPanel -->
@@ -462,9 +462,9 @@ export default {
     move(event, position, mesh, magnetism) {
       this.collide = false;
       const mouseScreenPoint = this.getMouseScreenPoint(event);
+      // if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
 
       if (this.enableShapeEdit) {
-        if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
         this.moving = true;
         const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint);
         window.verticeCoordinates[mesh.name.split('_coordinate')[0]].move(mesh.name, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
@@ -472,12 +472,10 @@ export default {
       }
 
       if (mesh.isDimension || mesh.isCoordinate) {
-        if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
         this.moving = true;
         const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint, [this.id]);
         this.resize(mesh, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
       } else if (mesh.isPanel) {
-        if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
         this.moving = true;
 
         if (magnetism) {
@@ -574,11 +572,6 @@ export default {
     },
   },
   watch: {
-    moving(isMoving, wasMoving) {
-      if (isMoving && !wasMoving) {
-        if (this.relatedConnections.length) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
-      }
-    },
     ptype(newType, oldType) {
       if (newType !== oldType) {
         this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });

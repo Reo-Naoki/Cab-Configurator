@@ -325,8 +325,8 @@ export default {
         if (this.plankPoints) {
           const maxX = Math.max(...this.plankPoints.map(p => p[0]));
           const maxY = Math.max(...this.plankPoints.map(p => p[1]));
-          const minX = Math.min(...this.plankPoints.map(p => (p[0] === 0 ? Number.MAX_VALUE : p[0])));
-          const minY = Math.min(...this.plankPoints.map(p => (p[1] === 0 ? Number.MAX_VALUE : p[1])));
+          const minX = Math.min(...this.plankPoints.map(p => p[0]));
+          const minY = Math.min(...this.plankPoints.map(p => p[1]));
           const newPoints = this.plankPoints.map(point => (this.isResizablePoint(point, maxX, maxY) ? this.resizePoint(point, newDimension, minX, minY, maxX, maxY) : point));
           this.$emit('update:plankPoints', newPoints);
         }
@@ -336,11 +336,22 @@ export default {
       }
     },
     isResizablePoint(point, maxX, maxY) {
-      return (point[0] === maxX && point[1] === maxY) || (point[0] === 0 && point[1] === maxY) || (point[0] === maxX && point[1] === 0);
+      return point[0] === maxX || point[1] === maxY || point[0] === 0 || point[1] === 0;
     },
     resizePoint(point, dimension, minX, minY, maxX, maxY) {
-      return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
-        point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
+      if (this.plankType === 'FP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.width / 10) : point[1]];
+      }
+      if (this.plankType === 'VP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.width / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
+      }
+      if (this.plankType === 'VDP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
+      }
+      return null;
     },
     resizeByValue(direction, value) {
       let newPosition = null;

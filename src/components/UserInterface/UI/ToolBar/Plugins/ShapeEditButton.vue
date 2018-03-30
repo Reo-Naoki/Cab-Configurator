@@ -31,8 +31,7 @@ export default {
       if (!this.selectedObject3D) return true;
       if (this.selectedObject3D.object3d.isGroup) return true;
       if (this.selectedObject3D.object3d.isConnectionBubble) return true;
-      if (window.panels[this.selectedObject3D.object3d.name.split('_')[0]].ptype !== 'VDP') return true;
-      return false;
+      return !window.panels[this.selectedObject3D.object3d.name.split('_')[0]].customGeometry;
     },
   },
   methods: {

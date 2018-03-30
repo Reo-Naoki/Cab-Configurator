@@ -47,7 +47,6 @@ const router = new Router({
 
 router.beforeEach(async (to, from, next) => {
   if (to.query.user) await store.dispatch('User/setUser', true); // If the route includes ?user=xxx
-  if (to.query.origin) store.commit('User/setParentOrigin', to.query.origin);
   next();
 });
 

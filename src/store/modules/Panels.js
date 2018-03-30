@@ -1,9 +1,9 @@
 import Vue from 'vue';
 import { Message, Notification, MessageBox } from 'element-ui';
 import { Box3, Vector3 } from 'three';
-import callDajax from '../../api/dajax';
+import { callDajax, isUserLogged } from '../../api/dajax';
 import EventBus from '../../components/EventBus/EventBus';
-import { sendMessage } from '../../api/postMessage';
+import { sendMessage } from '../../api/messages';
 import PlanksDimensions from '../../components/Widgets/Panel/Models/PlanksDimensions';
 import Connection from '../../components/Widgets/Connections/Models/Connection';
 
@@ -66,17 +66,12 @@ const getters = {
     const newPanels = panels.map((p) => {
       const panel = p;
       const { resizable, points } = panel;
-      // delete panel.groupName;
-      // delete panel.groupType;
-      // delete panel.resizable;
-      // if (panel.layer === 'Structure') delete panel.layer;
       const newPanel = {
         x: panel.x,
         y: panel.y,
         thick: panel.thick,
         ptype: resizable ? panel.ptype : `Hard-${panel.ptype}`,
         name: panel.name,
-        points: panel.points,
         pos: panel.pos,
         material: panel.material,
         id: panel.id,
@@ -94,7 +89,7 @@ const getters = {
       connlist: g.serializeConnections,
       materials,
       modele: 'VglDesigner',
-      version: process.env.PACKAGE_VERSION,
+      // version: process.env.PACKAGE_VERSION,
     };
   },
 };
@@ -109,7 +104,7 @@ const mutations = {
         const resizable = !p.ptype.includes('Hard');
         s.panels.push({
           ...p,
-          points: p.points || (p.ptype === 'VDP' ? [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]] : null),
+          points: p.points || [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]],
           ptype: resizable ? p.ptype : p.ptype.split('-')[1],
           id: p.id.split('-')[0],
           material: p.material.toString(),
@@ -642,7 +637,7 @@ const actions = {
         };
         callDajax('saveproject', payload)
           .then((response) => {
-            context.dispatch('Panels/projectSaved', response);
+            context.dispatch('projectSaved', response);
             resolve();
           }).catch(error => {
             console.error('Dajax error ', error);
@@ -655,28 +650,29 @@ const actions = {
   },
   projectSaved(context, response) {
     // handler saved project
-    if (response.name && response.success) {
+    const { data } = response;
+    if (data.name && data.success) {
       Notification({
         type: 'success',
-        message: `Projet "${response.name}" enregistré sur le serveur.`,
+        message: `Projet "${data.name}" enregistré sur le serveur.`,
       });
       // if (typeof resetUndo === 'function') resetUndo(); TODO
-      if (context.rootState.User.currentProjectID !== Number(response.id)) {
-        context.commit('User/setCurrentProjectID', Number(response.id), { root: true });
+      if (context.rootState.User.currentProjectID !== Number(data.id)) {
+        context.commit('User/setCurrentProjectID', Number(data.id), { root: true });
       }
       EventBus.$emit('updateProjectsList');
       EventBus.$emit('hideProjectsList');
       EventBus.$emit('saveAndReset');
     }
-    if (!response.success) {
-      if (response.locked) {
+    if (!data.success) {
+      if (data.locked) {
         MessageBox.alert('Le projet enregistré ne peut être modifié car il a déjà été ajouté au panier. Enregistrez sous un nouveau nom.', {
           type: 'error',
           title: 'Erreur',
           confirmButtonText: 'Ok',
         });
       } else {
-        MessageBox.alert("Erreur lors de l'enregistrement du projet. Réessayez et contactez nous si le problème persiste.", {
+        MessageBox.alert(`Erreur lors de l'enregistrement du projet. Réessayez et contactez nous si le problème persiste - ${data.message}`, {
           type: 'error',
           title: 'Erreur',
           confirmButtonText: 'Ok',
@@ -687,34 +683,40 @@ const actions = {
   addToCart(context) {
     const { state: s } = context;
     const panelsConnections = s.connections;
-    if (!context.rootState.User.isLogged) {
-      sendMessage('login');
-      return;
-    }
-    if (panelsConnections.length >= 1 && panelsConnections.filter(connection => connection.type === 'undefined').length >= 1) {
-      MessageBox.alert('Le projet comporte des problèmes de connections entre une ou plusieurs planches. Veuillez régler les soucis avant de mettre au panier.', {
-        type: 'error',
-        title: 'Erreur',
-        confirmButtonText: 'Ok',
-      });
-      return;
-    }
-    const payload = {
-      design: context.getters.serialize,
-      modele: 'VglDesigner',
-      name: context.rootGetters['User/currentProject'] ? context.rootGetters['User/currentProject'].name : '',
-      newname: `VglDesigner ${(new Date()).toLocaleString()}`,
-      img: window.renderer.domElement.toDataURL('image/png'),
-      id: context.rootState.User.currentProjectID || 0,
-    };
-    callDajax('saveandcart', payload)
-      .then((response) => { context.dispatch('Panels/addedToCart', response); });
+    isUserLogged().then((logdata) => {
+      if (!logdata.isLogged) {
+        sendMessage('login');
+        return;
+      }
+      if (panelsConnections.length >= 1 && panelsConnections.filter(connection => connection.type === 'undefined').length >= 1) {
+        MessageBox.alert('Le projet comporte des problèmes de connections entre une ou plusieurs planches. Veuillez régler les soucis avant de mettre au panier.', {
+          type: 'error',
+          title: 'Erreur',
+          confirmButtonText: 'Ok',
+        });
+        return;
+      }
+      const payload = {
+        design: context.getters.serialize,
+        modele: 'VglDesigner',
+        name: context.rootGetters['User/currentProject'] ? context.rootGetters['User/currentProject'].name : '',
+        newname: `VglDesigner ${(new Date()).toLocaleString()}`,
+        img: window.renderer.domElement.toDataURL('image/png'),
+        id: context.rootState.User.currentProjectID || 0,
+      };
+      callDajax('saveandcart', payload)
+        .then((response) => {
+          context.dispatch('addedToCart', response.data);
+        });
+    });
   },
   addedToCart(context, data) {
     if (data.success) {
-      sendMessage('redirect', '/quick-order');
+      Message.info('Votre projet a été ajouté au panier');
+      console.log('Add to cart success, redirecting');
+      sendMessage('cart');
     } else {
-      Message.error('Erreur, contactez le service client');
+      Message.error('Erreur, enregistrez votre projet contactez le service client');
     }
   },
   requestGeneralData(context) {
@@ -724,8 +726,8 @@ const actions = {
       callDajax('sendrlist', context.getters.serialize)
         .then((response) => {
           console.log('sendrlist returned result');
-          if (response.heroresult) {
-            const result = JSON.parse(response.heroresult);
+          if (response.data.heroresult) {
+            const result = JSON.parse(response.data.heroresult);
             context.commit('setPrice', result.price);
           }
           resolve();

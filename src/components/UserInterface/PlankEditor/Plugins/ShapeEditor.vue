@@ -60,12 +60,6 @@ export default {
         posY: 0,
       };
     },
-    selectedObject3DIndex() {
-      if (!this.selectedObject3D) return -1;
-      const selectedObject = this.selectedObject3D.object3d;
-      if (selectedObject.isPanel) return this.panels.findIndex(p => p.id === selectedObject.name);
-      return this.panels.findIndex(p => p.id === selectedObject.name.split('_')[0]);
-    },
     selectedPointIndex() {
       if (!this.selectedObject3D) return -1;
       if (this.selectedObject3D.object3d.isPanel) return -1;
@@ -75,12 +69,12 @@ export default {
     },
     isRemovable() {
       if (this.selectedPointIndex === -1) return false;
-      if (Object.values(window.panels)[this.selectedObject3DIndex].shapePoints.length === 3) return false;
+      if (window.panels[this.selectedObject3D.object3d.name.split('_')[0]].shapePoints.length === 3) return false;
       return true;
     },
     angle() {
       if (this.selectedPointIndex >= 0) {
-        const points = Object.values(window.panels)[this.selectedObject3DIndex].shapePoints;
+        const points = window.panels[this.selectedObject3D.object3d.name.split('_')[0]].shapePoints;
         const pointIndex = this.selectedPointIndex;
         const prevIndex = (pointIndex - 1 + points.length) % points.length;
         const nextIndex = (pointIndex + 1) % points.length;
@@ -93,7 +87,7 @@ export default {
     position: {
       get() {
         if (this.selectedPointIndex >= 0) {
-          const { points } = Object.values(window.panels)[this.selectedObject3DIndex];
+          const { points } = window.panels[this.selectedObject3D.object3d.name.split('_')[0]];
           const pointIndex = this.selectedPointIndex;
           const [x, y] = points[pointIndex];
           return { x, y };
@@ -102,29 +96,13 @@ export default {
       },
       set({ x, y }) {
         if (this.selectedPointIndex >= 0) {
-          let { points } = Object.values(window.panels)[this.selectedObject3DIndex];
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+
+          const { points } = window.panels[id];
           const pointIndex = this.selectedPointIndex;
           points[pointIndex] = [x, y];
 
-          const minX = Math.min(...points.map(p => p[0]));
-          const minY = Math.min(...points.map(p => p[1]));
-          const maxX = Math.max(...points.map(p => p[0]));
-          const maxY = Math.max(...points.map(p => p[1]));
-          const width = (maxX - minX) * 10;
-          const height = (maxY - minY) * 10;
-          points = points.map(p => ([p[0] - minX, p[1] - minY]));
-
-          Object.values(window.panels)[this.selectedObject3DIndex].shapePoints = points;
-          Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType = {
-            depth: width,
-            height,
-            width: Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType.width,
-          };
-          Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition = {
-            x: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.x,
-            y: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.y + minY * 10,
-            z: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.z + minX * 10,
-          };
+          this.calcPlankPosAndSize(id, points);
         }
       },
     },
@@ -156,18 +134,25 @@ export default {
       this.$store.commit('Panels/enableCreatePoint', !this.enableCreatePoint);
     },
     deletePoint() {
-      let points = Array.from(Object.values(window.panels)[this.selectedObject3DIndex].shapePoints);
-      const edges = Array.from(Object.values(window.panels)[this.selectedObject3DIndex].edges.split('-'));
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+
+      const points = Array.from(window.panels[id].shapePoints);
+      const edges = Array.from(window.panels[id].edges.split('-'));
       points.splice(this.selectedPointIndex, 1);
       edges.splice(this.selectedPointIndex, 1);
-      Object.values(window.panels)[this.selectedObject3DIndex].edges = edges.join('-');
+      window.panels[id].edges = edges.join('-');
       this.$store.commit('Camera/selectObject3D', {
         object3d: {
-          ...Object.values(window.panels)[this.selectedObject3DIndex],
-          name: Object.values(window.panels)[this.selectedObject3DIndex].id,
+          ...window.panels[id],
+          name: window.panels[id].id,
           isPanel: true,
         },
       });
+
+      this.calcPlankPosAndSize(id, points);
+    },
+    calcPlankPosAndSize(id, plankPoints) {
+      let points = plankPoints;
 
       const minX = Math.min(...points.map(p => p[0]));
       const minY = Math.min(...points.map(p => p[1]));
@@ -177,17 +162,41 @@ export default {
       const height = (maxY - minY) * 10;
       points = points.map(p => ([p[0] - minX, p[1] - minY]));
 
-      Object.values(window.panels)[this.selectedObject3DIndex].shapePoints = points;
-      Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType = {
-        depth: width,
-        height,
-        width: Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType.width,
-      };
-      Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition = {
-        x: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.x,
-        y: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.y + minY * 10,
-        z: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.z + minX * 10,
-      };
+      window.panels[id].shapePoints = points;
+      if (window.panels[id].ptype === 'FP') {
+        window.panels[id].dimensionsByType = {
+          width: height,
+          height: window.panels[id].dimensionsByType.height,
+          depth: width,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x + minY * 10,
+          y: window.panels[id].fixedPosition.y,
+          z: window.panels[id].fixedPosition.z + minX * 10,
+        };
+      } else if (window.panels[id].ptype === 'VP') {
+        window.panels[id].dimensionsByType = {
+          width,
+          height,
+          depth: window.panels[id].dimensionsByType.depth,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x + minX * 10,
+          y: window.panels[id].fixedPosition.y + minY * 10,
+          z: window.panels[id].fixedPosition.z,
+        };
+      } else if (window.panels[id].ptype === 'VDP') {
+        window.panels[id].dimensionsByType = {
+          width: window.panels[id].dimensionsByType.width,
+          height,
+          depth: width,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x,
+          y: window.panels[id].fixedPosition.y + minY * 10,
+          z: window.panels[id].fixedPosition.z + minX * 10,
+        };
+      }
     },
   },
 };

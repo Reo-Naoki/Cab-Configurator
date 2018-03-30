@@ -12,6 +12,7 @@
           :vertice-name="vertex.name"
           :plank-position.sync="position"
           :plank-dimension.sync="dimensionsByType"
+          :plank-type="plankType"
           :vertice-position="vertex.position"
           :shape-points.sync="shapePoints" />
       </div>
@@ -90,24 +91,24 @@ export default {
       } = this;
       const namePrefix = `${plankName}_vertex`;
       const pointVertice = [];
-      if (this.plankPoints && this.plankType === 'VDP') {
+      if (this.plankPoints) {
         this.plankPoints.forEach((point, index) => {
           pointVertice.push({
             side: `SHAPE${index}M`,
             name: `${namePrefix}_SHAPE${index}M`,
-            position: `${px} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            position: this.shapePointPosition(0, point),
             visible: this.showShapeVertice || (`SHAPE${index}M` in showVertices ? showVertices[`SHAPE${index}M`] : false),
           });
           pointVertice.push({
             side: `SHAPE${index}L`,
             name: `${namePrefix}_SHAPE${index}L`,
-            position: `${px - width / 2} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            position: this.shapePointPosition(-1, point),
             visible: `SHAPE${index}L` in showVertices ? showVertices[`SHAPE${index}L`] : false,
           });
           pointVertice.push({
             side: `SHAPE${index}R`,
             name: `${namePrefix}_SHAPE${index}R`,
-            position: `${px + width / 2} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`,
+            position: this.shapePointPosition(1, point),
             visible: `SHAPE${index}R` in showVertices ? showVertices[`SHAPE${index}R`] : false,
           });
         });
@@ -216,6 +217,16 @@ export default {
     this.setAsPlankVertice();
   },
   methods: {
+    shapePointPosition(type, point) {
+      const {
+        plankPosition: { x: px, y: py, z: pz },
+        plankDimension: { width, depth, height },
+      } = this;
+      if (this.plankType === 'FP') return `${px + point[1] * 10 - width / 2} ${py - height / 2 * type} ${pz + point[0] * 10 - depth / 2}`;
+      if (this.plankType === 'VP') return `${px + point[0] * 10 - width / 2} ${py + point[1] * 10 - height / 2} ${pz - depth / 2 * type}`;
+      if (this.plankType === 'VDP') return `${px + width / 2 * type} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`;
+      return null;
+    },
     showCoordinateArrows(name) {
       if (!this.enableShapeEdit || !this.selectedObject3D || !this.selectedObject3D.object3d.name.includes('SHAPE')) return false;
       if (!this.selectedObject3D.object3d.name.includes(name)) return false;
@@ -240,8 +251,10 @@ export default {
         .map(c => c); // get only ThreeJS instance of those component
     },
     sizeByDistanceToCamera(vertexPosition) {
-      if (this.enableShapeEdit) {
-        if (this.selectedObject3D.object3d.name.split('_')[0] === this.plankName) return this.plankDimension.width / 3;
+      if (this.enableShapeEdit && this.selectedObject3D.object3d.name.split('_')[0] === this.plankName) {
+        if (this.plankType === 'FP') return this.plankDimension.height / 3;
+        if (this.plankType === 'VP') return this.plankDimension.depth / 3;
+        if (this.plankType === 'VDP') return this.plankDimension.width / 3;
       }
       const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
       const p = new Vector3(x, y, z);

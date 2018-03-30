@@ -7,7 +7,7 @@
         {{t('currentproject')}}:
       </div>
       <img :src="projectImgUrl(currentProject.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
-      <div class="ard-projectlist-projectname">{{currentProject.name}} <A :href="parentOrigin + /meuble/ + currentProject.id_user_design" target="_blank">({{currentProject.id_user_design}})</A></div>
+      <div class="ard-projectlist-projectname">{{currentProject.name}} <A :href="projectUrl(currentProject.id_user_design)" target="_blank">({{currentProject.id_user_design}})</A></div>
       <a href="#" class="eel-button w-inline-block" @click="saveCurrent()">
         <div>{{t('saveproject')}}</div>
       </a>
@@ -33,7 +33,7 @@
     <div class="list-projet-rm">
       <div v-for="(project, pid) in otherVglProjects" :key="pid" class="ard-projectlistitem w-clearfix">
         <img :src="projectImgUrl(project.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
-        <div class="ard-projectlist-projectname">{{project.name}} du {{project.date}}</div>
+        <div class="ard-projectlist-projectname">{{project.id_user_design}} - {{project.name}} du {{project.date}}</div>
         <a :href="projectUrl(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"
            target="_blank">
           <div>{{t('open')}}</div>
@@ -51,8 +51,8 @@
 /* eslint-disable camelcase */
 import { mapGetters, mapState } from 'vuex';
 import EventBus from '../../../../EventBus/EventBus';
-import { sendMessage } from '../../../../../api/postMessage';
-
+import { sendMessage, siteUrl } from '../../../../../api/messages';
+import { isUserLogged } from '../../../../../api/dajax';
 
 export default {
   name: 'projectsBox',
@@ -82,10 +82,8 @@ export default {
   },
   computed: {
     ...mapState('User', [
-      'isLogged',
       'currentProjectID', // ref_id
       'projects',
-      'parentOrigin',
     ]),
     ...mapGetters('User', [
       'currentProject',
@@ -103,10 +101,10 @@ export default {
       return this.$t(msg);
     },
     projectImgUrl(id_user_design) {
-      return `https://dessinetonmeuble.fr/uimg/img${id_user_design}.png`;
+      return `${siteUrl}/uimg/img${id_user_design}.png`;
     },
     projectUrl(id_user_design) {
-      return `${this.parentOrigin}/meuble/${id_user_design}`;
+      return `${siteUrl}/meuble/${id_user_design}`;
     },
     saveCurrent() {
       this.$store.dispatch('Panels/save', { name: this.currentProject.name });
@@ -116,15 +114,17 @@ export default {
     },
     displayProjects() {
       // eslint-disable-next-line no-undef
-      if (this.isLogged) {
+      isUserLogged().then((response) => {
+        if (response.isLogged) {
         // Force update if connected and 0 projects - we may have just connected, and there is
         // no watcher to trigger an update once connection is successfull
         // Will generate extra calls for customers with 0 project but minimal response size
-        if (this.projects.length === 0) this.updateList = true;
-        this.isVisible = true;
-      } else {
-        sendMessage('login');
-      }
+          if (this.projects.length === 0) this.updateList = true;
+          this.isVisible = true;
+        } else {
+          sendMessage('login');
+        }
+      });
     },
   },
   mounted() {

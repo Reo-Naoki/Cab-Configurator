@@ -1,19 +1,17 @@
 import axios from 'axios';
-import { sendMessageAndWait } from './postMessage';
-
-const path = (process.env.NODE_ENV === 'production') ? 'https://dessinetonmeuble.fr/' : 'https://dev.dessinetonmeuble.fr/';
+import { sendMessageAndWait, isInIframe, siteUrl } from '@/api/messages';
 
 const callFabApi = (method = '', payload = {}) => {
-  if (window.mainPagePort) return sendMessageAndWait('fabapi', { method, data: payload });
+  if (isInIframe) return sendMessageAndWait('fabapi', { method, data: payload });
   return axios({
     method: 'post',
-    baseURL: `${path}/modules/adesigner/fabapi.php`,
+    baseURL: `${siteUrl}/modules/adesigner/fabapi.php`,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
     params: { route: method },
-
+    data: payload,
   });
 };
 

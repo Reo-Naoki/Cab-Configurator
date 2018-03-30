@@ -1,14 +1,14 @@
 <script>
 import * as THREE from 'three';
 // import * as THREE from 'three';
-import VDPanel from './VDPanel';
+import FlatPanel from './FlatPanel';
 
 export default {
-  name: 'VDPwithPoints',
-  mixins: [VDPanel],
+  name: 'FPwithPoints',
+  mixins: [FlatPanel],
   computed: {
     shapeSideRotation() {
-      return `0 ${-Math.PI / 2} 0`;
+      return `${-Math.PI / 2} 0 ${-Math.PI / 2}`;
     },
     customGeometry() {
       return 'VglExtrudeGeometry';
@@ -53,7 +53,7 @@ export default {
       return this.shapePoints.map(p => new THREE.Vector2(p[0] * 10 - width, p[1] * 10 - height));
     },
     shapeThick() {
-      return this.dimensionsByType.width;
+      return this.dimensionsByType.height;
     },
     shapeHeights() {
       const heights = [];
@@ -67,34 +67,34 @@ export default {
       for (let i = 0; i < points.length; i += 1) {
         const nextI = (i + 1) % points.length;
         const angle = points[nextI].clone().sub(points[i]).angle();
-        rotations.push(`${-angle + Math.PI / 2} 0 0`);
+        rotations.push(`0 ${angle - Math.PI / 2} ${-Math.PI / 2}`);
       }
       return rotations;
     },
     shapePositions(index) {
       const points = this.fixedPoints();
       const nextI = (index + 1) % points.length;
-      return `${this.fixedPosition.x} ${this.fixedPosition.y + (points[index].y + points[nextI].y) / 2} ${this.fixedPosition.z + (points[index].x + points[nextI].x) / 2}`;
+      return `${this.fixedPosition.x + (points[index].y + points[nextI].y) / 2} ${this.fixedPosition.y} ${this.fixedPosition.z + (points[index].x + points[nextI].x) / 2}`;
     },
     outline() {
       const positions = [];
       const points = this.fixedPoints();
       for (let i = 0; i < points.length; i += 1) {
-        positions.push(0);
         positions.push(points[i].y);
+        positions.push(0);
         positions.push(points[i].x);
       }
       return positions;
     },
     shapeSegmentLine(index) {
-      return `${-this.dimensionsByType.width / 2}, ${this.fixedPoints()[index].y}, ${this.fixedPoints()[index].x},
-        ${this.dimensionsByType.width / 2}, ${this.fixedPoints()[index].y}, ${this.fixedPoints()[index].x}`;
+      return `${this.fixedPoints()[index].y}, ${-this.dimensionsByType.height / 2}, ${this.fixedPoints()[index].x},
+        ${this.fixedPoints()[index].y}, ${this.dimensionsByType.height / 2},  ${this.fixedPoints()[index].x}`;
     },
     leftPanelPosition() {
-      return `${this.fixedPosition.x - this.dimensionsByType.width / 2} ${this.fixedPosition.y} ${this.fixedPosition.z}`;
+      return `${this.fixedPosition.x} ${this.fixedPosition.y - this.dimensionsByType.height / 2} ${this.fixedPosition.z}`;
     },
     rightPanelPosition() {
-      return `${this.fixedPosition.x + this.dimensionsByType.width / 2} ${this.fixedPosition.y} ${this.fixedPosition.z}`;
+      return `${this.fixedPosition.x} ${this.fixedPosition.y + this.dimensionsByType.height / 2} ${this.fixedPosition.z}`;
     },
   },
   mounted() {

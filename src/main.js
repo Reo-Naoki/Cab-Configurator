@@ -6,7 +6,7 @@ import router from './router';
 import './assets/css/wf.css';
 import './assets/css/wf-adesigner.css';
 import i18n from './i18n';
-import './api/handleMessage';
+import './api/messages';
 
 Object.keys(VueGL).forEach((name) => {
   // register every VueGL component globally (could be improved)

@@ -101,50 +101,75 @@ export default {
       return select;
     },
     updateStyle() {
-      if (this.plankPoints) {
-        this.plankPoints.forEach((point, index) => {
-          const nextIndex = (index + 1) % this.plankPoints.length;
-          const edgePosition = new Vector3(
-            this.plankPosition.x,
-            this.plankPosition.y - this.plankDimension.height / 2 + (point[1] + this.plankPoints[nextIndex][1]) * 5,
-            this.plankPosition.z - this.plankDimension.depth / 2 + (point[0] + this.plankPoints[nextIndex][0]) * 5,
-          );
+      const {
+        plankPosition,
+        plankDimension,
+        plankPoints,
+        plankType,
+      } = this;
+
+      if (plankPoints) {
+        plankPoints.forEach((point, index) => {
+          const nextIndex = (index + 1) % plankPoints.length;
+          let edgePosition = new Vector3(plankPosition.x, plankPosition.y, plankPosition.z);
+
+          if (plankType === 'FP') {
+            edgePosition = new Vector3(
+              plankPosition.x - plankDimension.width / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+              plankPosition.y,
+              plankPosition.z - plankDimension.depth / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+            );
+          } else if (plankType === 'VP') {
+            edgePosition = new Vector3(
+              plankPosition.x - plankDimension.width / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+              plankPosition.y - plankDimension.height / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+              plankPosition.z,
+            );
+          } else if (plankType === 'VDP') {
+            edgePosition = new Vector3(
+              plankPosition.x,
+              plankPosition.y - plankDimension.height / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+              plankPosition.z - plankDimension.depth / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+            );
+          }
+
           const vectorEdge2D = this.projectVectorTo2D(edgePosition.x, edgePosition.y, edgePosition.z);
+
           this.edgeElements[index].style.top = `${vectorEdge2D.y}px`;
           this.edgeElements[index].style.left = `${vectorEdge2D.x}px`;
         });
       } else {
         const topPosition = new Vector3(
-          this.plankPosition.x,
-          this.plankType === 'VDP' || this.plankType === 'VP' ? this.plankPosition.y + this.plankDimension.height / 2 : this.plankPosition.y,
-          this.plankType === 'FP' ? this.plankPosition.z - this.plankDimension.depth / 2 : this.plankPosition.z,
+          plankPosition.x,
+          plankType === 'VDP' || plankType === 'VP' ? plankPosition.y + plankDimension.height / 2 : plankPosition.y,
+          plankType === 'FP' ? plankPosition.z - plankDimension.depth / 2 : plankPosition.z,
         );
         const vectorTop2D = this.projectVectorTo2D(topPosition.x, topPosition.y, topPosition.z);
         this.topElement.style.top = `${vectorTop2D.y}px`;
         this.topElement.style.left = `${vectorTop2D.x}px`;
 
         const leftPosition = new Vector3(
-          this.plankType === 'FP' || this.plankType === 'VP' ? this.plankPosition.x - this.plankDimension.width / 2 : this.plankPosition.x,
-          this.plankPosition.y,
-          this.plankType === 'VDP' ? this.plankPosition.z + this.plankDimension.depth / 2 : this.plankPosition.z,
+          plankType === 'FP' || plankType === 'VP' ? plankPosition.x - plankDimension.width / 2 : plankPosition.x,
+          plankPosition.y,
+          plankType === 'VDP' ? plankPosition.z + plankDimension.depth / 2 : plankPosition.z,
         );
         const vectorLeft2D = this.projectVectorTo2D(leftPosition.x, leftPosition.y, leftPosition.z);
         this.leftElement.style.top = `${vectorLeft2D.y}px`;
         this.leftElement.style.left = `${vectorLeft2D.x}px`;
 
         const rightPosition = new Vector3(
-          this.plankType === 'FP' || this.plankType === 'VP' ? this.plankPosition.x + this.plankDimension.width / 2 : this.plankPosition.x,
-          this.plankPosition.y,
-          this.plankType === 'VDP' ? this.plankPosition.z - this.plankDimension.depth / 2 : this.plankPosition.z,
+          plankType === 'FP' || plankType === 'VP' ? plankPosition.x + plankDimension.width / 2 : plankPosition.x,
+          plankPosition.y,
+          plankType === 'VDP' ? plankPosition.z - plankDimension.depth / 2 : plankPosition.z,
         );
         const vectorRight2D = this.projectVectorTo2D(rightPosition.x, rightPosition.y, rightPosition.z);
         this.rightElement.style.top = `${vectorRight2D.y}px`;
         this.rightElement.style.left = `${vectorRight2D.x}px`;
 
         const basePosition = new Vector3(
-          this.plankPosition.x,
-          this.plankType === 'VDP' || this.plankType === 'VP' ? this.plankPosition.y - this.plankDimension.height / 2 : this.plankPosition.y,
-          this.plankType === 'FP' ? this.plankPosition.z + this.plankDimension.depth / 2 : this.plankPosition.z,
+          plankPosition.x,
+          plankType === 'VDP' || plankType === 'VP' ? plankPosition.y - plankDimension.height / 2 : plankPosition.y,
+          plankType === 'FP' ? plankPosition.z + plankDimension.depth / 2 : plankPosition.z,
         );
         const vectorBase2D = this.projectVectorTo2D(basePosition.x, basePosition.y, basePosition.z);
         this.baseElement.style.top = `${vectorBase2D.y}px`;

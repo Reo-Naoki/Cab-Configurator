@@ -20,14 +20,18 @@ export default {
       type: Object,
       required: true,
     },
+    plankType: {
+      type: String,
+      required: true,
+    },
     plankPoints: {
       type: Array,
-      required: false,
+      required: true,
     },
   },
   data() {
     return {
-      edgeElements: [],
+      lineElements: [],
       containerElement: null,
     };
   },
@@ -44,13 +48,7 @@ export default {
     cameraInst() {
       return this.vglNamespace.cameras.camera1;
     },
-    selectedObject3DIndex() {
-      if (!this.selectedObject3D) return -1;
-      const selectedObject = this.selectedObject3D.object3d;
-      if (selectedObject.isPanel) return this.panels.findIndex(p => p.id === selectedObject.name);
-      return this.panels.findIndex(p => p.id === selectedObject.name.split('_')[0]);
-    },
-    edges() {
+    lines() {
       return this.plankPoints.map((point, index) => {
         const nextIndex = (index + 1) % this.plankPoints.length;
         const nextPoint = this.plankPoints[nextIndex];
@@ -81,7 +79,14 @@ export default {
       return vector;
     },
     updateStyle() {
-      if (this.plankPoints.length !== this.edgeElements.length) {
+      const {
+        plankPosition,
+        plankDimension,
+        plankPoints,
+        plankType,
+      } = this;
+
+      if (plankPoints.length !== this.lineElements.length) {
         this.changeEventHandler(false);
         this.removeElements();
         this.addElementsToDOM();
@@ -91,19 +96,36 @@ export default {
       const name = this.selectedObject3D ? this.selectedObject3D.object3d.name : '';
       const pointIndex = name.includes('SHAPE') ? Number(name.split('SHAPE')[1].split('M')[0]) : -1;
 
-      this.plankPoints.forEach((point, index) => {
-        const nextIndex = (index + 1) % this.plankPoints.length;
-        const edgePosition = new Vector3(
-          this.plankPosition.x,
-          this.plankPosition.y - this.plankDimension.height / 2 + (point[1] + this.plankPoints[nextIndex][1]) * 5,
-          this.plankPosition.z - this.plankDimension.depth / 2 + (point[0] + this.plankPoints[nextIndex][0]) * 5,
-        );
-        const vectorEdge2D = this.projectVectorTo2D(edgePosition.x, edgePosition.y, edgePosition.z);
+      plankPoints.forEach((point, index) => {
+        const nextIndex = (index + 1) % plankPoints.length;
+        let linePosition = new Vector3(plankPosition.x, plankPosition.y, plankPosition.z);
 
-        this.edgeElements[index].style.top = `${vectorEdge2D.y}px`;
-        this.edgeElements[index].style.left = `${vectorEdge2D.x}px`;
-        this.edgeElements[index].style.display = (pointIndex === index || pointIndex === nextIndex || pointIndex === -1) ? 'unset' : 'none';
-        this.edgeElements[index].value = this.edges[index];
+        if (plankType === 'FP') {
+          linePosition = new Vector3(
+            plankPosition.x - plankDimension.width / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+            plankPosition.y,
+            plankPosition.z - plankDimension.depth / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+          );
+        } else if (plankType === 'VP') {
+          linePosition = new Vector3(
+            plankPosition.x - plankDimension.width / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+            plankPosition.y - plankDimension.height / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+            plankPosition.z,
+          );
+        } else if (plankType === 'VDP') {
+          linePosition = new Vector3(
+            plankPosition.x,
+            plankPosition.y - plankDimension.height / 2 + (point[1] + plankPoints[nextIndex][1]) * 5,
+            plankPosition.z - plankDimension.depth / 2 + (point[0] + plankPoints[nextIndex][0]) * 5,
+          );
+        }
+
+        const vectorline2D = this.projectVectorTo2D(linePosition.x, linePosition.y, linePosition.z);
+
+        this.lineElements[index].style.top = `${vectorline2D.y}px`;
+        this.lineElements[index].style.left = `${vectorline2D.x}px`;
+        this.lineElements[index].style.display = (pointIndex === index || pointIndex === nextIndex || pointIndex === -1) ? 'unset' : 'none';
+        this.lineElements[index].value = this.lines[index];
       });
     },
     createInput(id) {
@@ -116,16 +138,16 @@ export default {
       return inputField;
     },
     addElementsToDOM() {
-      this.edgeElements = [];
+      this.lineElements = [];
       const appDiv = document.getElementById('content-3d');
       const container = document.createElement('div');
       container.classList.add('line-input-container');
 
       this.plankPoints.forEach((point, index) => {
-        const edgeElement = this.createInput(index);
-        edgeElement.value = this.edges[index];
-        this.edgeElements.push(edgeElement);
-        container.appendChild(edgeElement);
+        const lineElement = this.createInput(index);
+        lineElement.value = this.lines[index];
+        this.lineElements.push(lineElement);
+        container.appendChild(lineElement);
       });
 
       this.containerElement = container;
@@ -153,16 +175,42 @@ export default {
       const height = (maxY - minY) * 10;
       points = points.map(p => ([p[0] - minX, p[1] - minY]));
 
-      Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType = {
-        depth: width,
-        height,
-        width: Object.values(window.panels)[this.selectedObject3DIndex].dimensionsByType.width,
-      };
-      Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition = {
-        x: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.x,
-        y: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.y + minY * 10,
-        z: Object.values(window.panels)[this.selectedObject3DIndex].fixedPosition.z + minX * 10,
-      };
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+
+      if (this.plankType === 'FP') {
+        window.panels[id].dimensionsByType = {
+          width: height,
+          height: window.panels[id].dimensionsByType.height,
+          depth: width,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x + minY * 10,
+          y: window.panels[id].fixedPosition.y,
+          z: window.panels[id].fixedPosition.z + minX * 10,
+        };
+      } else if (this.plankType === 'VP') {
+        window.panels[id].dimensionsByType = {
+          width,
+          height,
+          depth: window.panels[id].dimensionsByType.depth,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x + minX * 10,
+          y: window.panels[id].fixedPosition.y + minY * 10,
+          z: window.panels[id].fixedPosition.z,
+        };
+      } else if (this.plankType === 'VDP') {
+        window.panels[id].dimensionsByType = {
+          width: window.panels[id].dimensionsByType.width,
+          height,
+          depth: width,
+        };
+        window.panels[id].fixedPosition = {
+          x: window.panels[id].fixedPosition.x,
+          y: window.panels[id].fixedPosition.y + minY * 10,
+          z: window.panels[id].fixedPosition.z + minX * 10,
+        };
+      }
 
       this.$emit('update:plankPoints', points);
       this.$nextTick(() => EventBus.$emit('save'));
@@ -204,14 +252,14 @@ export default {
     },
     changeEventHandler(bool) {
       if (bool) {
-        this.edgeElements.forEach((element) => {
+        this.lineElements.forEach((element) => {
           element.addEventListener('keydown', this.onKeyDown);
           element.addEventListener('mousemove', this.onMouseMove, false);
           element.addEventListener('auxclick', this.onMouseRightClick, false);
           element.addEventListener('wheel', this.onMouseWheel, false);
         });
       } else {
-        this.edgeElements.forEach((element) => {
+        this.lineElements.forEach((element) => {
           element.removeEventListener('keydown', this.onKeyDown);
           element.removeEventListener('mousemove', this.onMouseMove, false);
           element.removeEventListener('auxclick', this.onMouseRightClick, false);

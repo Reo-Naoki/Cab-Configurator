@@ -2,18 +2,18 @@
   <div class="and-middle-bandeau">
     <div class="and-wrapper-icon-navbar">
       <div>
-        <div id="ard-2dzoomminus" class="and-margin-icon">
+        <div class="and-margin-icon">
           <div class="round-icon white"></div>
           <div class="and-text-under-icon">Ouvrir projet</div>
         </div>
         <div id="ard-2dzoomplus" class="and-margin-icon"></div>
       </div>
       <div>
-        <div id="ard-2dzoomminus" class="and-margin-icon">
+        <div class="and-margin-icon">
           <div class="round-icon white" @click="() => { this.showImportBox = true; }"><em class="el-icon-document-add"/></div>
           <div class="and-text-under-icon">Importer un projet</div>
         </div>
-        <div id="ard-2dzoomplus" class="and-margin-icon"></div>
+        <div class="and-margin-icon"></div>
       </div>
     </div>
     <a href="/info" target="_blank" class="and-wrapper-icon-navbar w-inline-block">

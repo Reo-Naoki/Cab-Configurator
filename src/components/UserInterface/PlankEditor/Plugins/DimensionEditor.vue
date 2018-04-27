@@ -62,6 +62,7 @@ export default {
     x: {
       get() { return this.panel.x; },
       set(data) {
+        this.calcPanelPoints({ x: data, y: this.y });
         this.$store.commit('Panels/setPanelData', {
           index: this.selectedObject3DIndex,
           key: 'x',
@@ -72,6 +73,7 @@ export default {
     y: {
       get() { return this.panel.y; },
       set(data) {
+        this.calcPanelPoints({ x: this.x, y: data });
         this.$store.commit('Panels/setPanelData', {
           index: this.selectedObject3DIndex,
           key: 'y',
@@ -88,6 +90,25 @@ export default {
           data,
         });
       },
+    },
+  },
+  methods: {
+    calcPanelPoints(newDimension) {
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+      const { shapePoints } = window.panels[id];
+      const maxX = Math.max(...shapePoints.map(p => p[0]));
+      const maxY = Math.max(...shapePoints.map(p => p[1]));
+      const minX = Math.min(...shapePoints.map(p => p[0]));
+      const minY = Math.min(...shapePoints.map(p => p[1]));
+      const newPoints = shapePoints.map(point => (this.isResizablePoint(point, maxX, maxY) ? this.resizePoint(point, newDimension, minX, minY, maxX, maxY) : point));
+      window.panels[id].shapePoints = newPoints;
+    },
+    isResizablePoint(point, maxX, maxY) {
+      return point[0] === maxX || point[1] === maxY || point[0] === 0 || point[1] === 0;
+    },
+    resizePoint(point, dimension, minX, minY, maxX, maxY) {
+      return [point[0] === maxX ? Math.max(minX + 1, dimension.x) : point[0],
+        point[1] === maxY ? Math.max(minY + 1, dimension.y) : point[1]];
     },
   },
 };

@@ -13,8 +13,6 @@ export default {
       dimensionsMarginRight: 15,
     };
   },
-  mounted() {
-  },
   computed: {
     fixedPosition: {
       get() {

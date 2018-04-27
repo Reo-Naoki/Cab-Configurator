@@ -2,21 +2,22 @@
   <div v-if="selectedObject3DIndex !== -1">
     <div class="title-menu-left"><h2 class="heading-menu">Couche</h2></div>
     <div class="content-menu-left">
-      <select class="dimension-select w-select" v-model.number="layer">
+      <select class="dimension-select w-select" v-model="layer">
         <option v-if="layers.findIndex(layer => layer.name === 'Structure') ===  undefined" value="Structure" label="Structure" />
-        <option v-for="(layer) in layers" :key="layer.name" :value="layer.name" :label="layer.name" />
+        <option v-for="(layer, index) in layers" :key="index" :value="layer.name" :label="layer.name" />
       </select>
+      <div class="align-right">
+        <input type="button" class="edit-button" @click="manageLayers()" value="Edit Layers"/>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { mapState } from 'vuex';
-import { Switch } from 'element-ui';
 
 export default {
   name: 'LayerEditor',
-  components: { [Switch.name]: Switch },
   props: ['layers'],
   computed: {
     ...mapState('Panels', [
@@ -41,10 +42,26 @@ export default {
         this.$store.commit('Panels/setPanelData', {
           index: this.selectedObject3DIndex,
           key: 'layer',
-          data,
+          data: data.toString(),
         });
       },
     },
   },
+  methods: {
+    manageLayers() {
+      this.$store.commit('Panels/enableLayerManager', true);
+    },
+  },
 };
 </script>
+
+<style scoped>
+  .edit-button {
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid rgb(204, 204, 204);
+  }
+  .align-right {
+    text-align: right;
+  }
+</style>

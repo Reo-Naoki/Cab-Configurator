@@ -18,7 +18,8 @@
     <vgl-line-basic-material name="outline" :linewidth="5" color="#666666" />
 
     <vgl-texture :src="excentriqueURI" name="excentrique" :premultiply-alpha="true" :alpha="true"/>
-    <vgl-mesh-lambert-material name="excentrique" map="excentrique" :opacity="0.5" :transparent="true" />
+    <vgl-mesh-lambert-material name="excentrique" map="excentrique" />
+    <vgl-mesh-lambert-material name="drill" color="#333333" />
   </div>
 </template>
 

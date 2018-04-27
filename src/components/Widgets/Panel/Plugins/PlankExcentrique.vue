@@ -1,29 +1,26 @@
 <template>
   <div>
+    <vgl-cylinder-geometry :name="`${plankID}_excentrique_geometry`" v-bind="screwDimension()"/>
     <div v-for="(c, index) in connectionsWherePanelIsP2" :key="`${plankID}_excentrique_${c.p1}_${c.p2}_key_${index}`">
-      <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_left`" v-bind="screwDimension()"/>
-      <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_left`"
+      <vgl-mesh :geometry="`${plankID}_excentrique_geometry`"
                 material="excentrique"
                 :position="getFixedOrigin(c, -1)"
                 :rotation="getFixedRotation(c)"
                 :name="`${plankID}_excentrique_${c.p1}_${c.p2}_left`">
       </vgl-mesh>
-      <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_right`" v-bind="screwDimension()"/>
-      <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_right`"
+      <vgl-mesh :geometry="`${plankID}_excentrique_geometry`"
                 material="excentrique"
                 :position="getFixedOrigin(c, 1)"
                 :rotation="getFixedRotation(c)"
                 :name="`${plankID}_excentrique_${c.p1}_${c.p2}_right`">
       </vgl-mesh>
-      <div v-if="c.ilength >= 6000">
-        <vgl-cylinder-geometry :name="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_middle`" v-bind="screwDimension()"/>
-        <vgl-mesh :geometry="`${plankID}_excentrique_${c.p1}_${c.p2}_geometry_middle`"
-                  material="excentrique"
-                  :position="getFixedOrigin(c, 0)"
-                  :rotation="getFixedRotation(c)"
-                  :name="`${plankID}_excentrique_${c.p1}_${c.p2}_middle`">
-        </vgl-mesh>
-      </div>
+      <vgl-mesh v-if="c.ilength >= 6000"
+                :geometry="`${plankID}_excentrique_geometry`"
+                material="excentrique"
+                :position="getFixedOrigin(c, 0)"
+                :rotation="getFixedRotation(c)"
+                :name="`${plankID}_excentrique_${c.p1}_${c.p2}_middle`">
+      </vgl-mesh>
     </div>
   </div>
 </template>
@@ -57,7 +54,7 @@ export default {
   },
   data() {
     return {
-      screwHeaderHeight: 10, // space between the plank and the texture (avoid colliding geometry
+      screwHeaderHeight: 5, // space between the plank and the texture (avoid colliding geometry)
       screwSpacing: 250,
       screwMargin: 500,
       screwDiameter: 150,
@@ -66,7 +63,8 @@ export default {
   },
   computed: {
     connectionsWherePanelIsP2() {
-      return this.connections.filter(c => c.p2 === Number(this.plankID) && c.isDefaultConnection).filter(c => !window.panels[c.p2].groupName || !window.groups[window.panels[c.p2].groupName].moving);
+      return this.connections.filter(c => c.p2 === Number(this.plankID) && (c.isDefaultConnection || c.isRafixConnection))
+        .filter(c => !window.panels[c.p2].groupName || (window.groups[window.panels[c.p2].groupName] && !window.groups[window.panels[c.p2].groupName].moving));
     },
   },
   methods: {
@@ -80,6 +78,7 @@ export default {
     getOriginByP1(connection, index) {
       const { p2side, center, ilength } = connection;
       const { plankPosition: { x: px, y: py, z: pz }, plankDimension: { width, depth, height } } = this;
+      const spacing = connection.isDefaultConnection ? this.screwSpacing : (this.screwDiameter / 2);
 
       switch (this.plankType) {
         case 'FP': // Ok
@@ -87,25 +86,25 @@ export default {
             return {
               x: center.x + (ilength / 2 - this.screwMargin) * index,
               y: p2side === 1 ? py + height + this.screwHeaderHeight : py - this.screwHeaderHeight,
-              z: center.z > pz ? pz + depth - this.screwSpacing : pz + this.screwSpacing,
+              z: center.z > pz ? pz + depth - spacing : pz + spacing,
             };
           }
           return { // Connect along z axis = with VDP
-            x: center.x > px ? px + width - this.screwSpacing : px + this.screwSpacing,
+            x: center.x > px ? px + width - spacing : px + spacing,
             y: p2side === 1 ? py + height + this.screwHeaderHeight : py - this.screwHeaderHeight,
             z: center.z + (ilength / 2 - this.screwMargin) * index,
           };
         case 'VP': // Not done
           if (this.almostEqual(center.x, px) || this.almostEqual(center.x, px + width)) { // Connect with VDP
             return {
-              x: center.x <= px ? px + this.screwSpacing : px + width - this.screwSpacing,
+              x: center.x <= px ? px + spacing : px + width - spacing,
               y: center.y + (ilength / 2 - this.screwMargin) * index,
               z: p2side === 1 ? pz - this.screwHeaderHeight : pz + depth + this.screwHeaderHeight,
             };
           }
           return { // Connect with FP
             x: center.x + (ilength / 2 - this.screwMargin) * index,
-            y: center.y > py ? py + height - this.screwSpacing : py + this.screwSpacing,
+            y: center.y > py ? py + height - spacing : py + spacing,
             z: p2side === 1 ? pz - this.screwHeaderHeight : pz + depth + this.screwHeaderHeight,
           };
         case 'VDP': // Tested Ok
@@ -113,14 +112,14 @@ export default {
           if (this.almostEqual(center.y, py) || this.almostEqual(center.y, py + height)) { // Connect with VP
             return {
               x: p2side === 1 ? px + width + this.screwHeaderHeight : px - this.screwHeaderHeight,
-              y: center.y > py ? center.y - this.screwSpacing : py + this.screwSpacing,
+              y: center.y > py ? center.y - spacing : py + spacing,
               z: center.z + (ilength / 2 - this.screwMargin) * index,
             };
           }
           return {
             x: p2side === 1 ? px + width + this.screwHeaderHeight : px - this.screwHeaderHeight,
             y: center.y + (ilength / 2 - this.screwMargin) * index,
-            z: center.z > pz ? pz + depth - this.screwSpacing : pz + this.screwSpacing,
+            z: center.z > pz ? pz + depth - spacing : pz + spacing,
           };
       }
     },

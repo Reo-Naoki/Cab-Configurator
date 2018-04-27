@@ -161,11 +161,11 @@ export default {
       const { name } = this.selectedObject3D.object3d;
       const pointIndex = name.includes('SHAPE') ? Number(name.split('SHAPE')[1].split('M')[0]) : ((index + 1) % this.plankPoints.length);
       const nextIndex = (name.includes('SHAPE') && pointIndex === index) ? (index + 1) % this.plankPoints.length : index;
-      let points = Array.from(this.plankPoints);
+      let points = this.plankPoints.map(point => [point[0], point[1]]);
       const direct = new Vector2(points[pointIndex][0] - points[nextIndex][0], points[pointIndex][1] - points[nextIndex][1]).normalize();
 
       points[pointIndex] = new Vector2(points[nextIndex][0], points[nextIndex][1]).add(direct.multiplyScalar(value));
-      points[pointIndex] = [points[pointIndex].x, points[pointIndex].y];
+      points[pointIndex] = [Math.round(points[pointIndex].x * 10) / 10, Math.round(points[pointIndex].y * 10) / 10];
 
       const minX = Math.min(...points.map(p => p[0]));
       const minY = Math.min(...points.map(p => p[1]));
@@ -218,28 +218,23 @@ export default {
     onKeyDown(event) {
       if (event.key === 'Escape') {
         const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const auxclickEvent = new MouseEvent('auxclick', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(auxclickEvent);
+        const keyboardEvent = new KeyboardEvent('keydown', event, false);
+        appDiv.dispatchEvent(keyboardEvent);
       } else if (event.key === 'Enter') {
         const { value } = event.target;
         this.onChange(Number(event.target.id), value);
-        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const clickEvent = new MouseEvent('click', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(clickEvent);
       }
     },
     sendMouseEvent(type, event) {
       const appDiv = this.vglNamespace.renderers[0].inst.domElement;
       const mouseEvent = new MouseEvent(type, event, false);
       appDiv.dispatchEvent(mouseEvent);
+    },
+    onMouseDown(event) {
+      this.sendMouseEvent('mousedown', event);
+    },
+    onMouseClick(event) {
+      this.sendMouseEvent('click', event);
     },
     onMouseMove(event) {
       this.sendMouseEvent('mousemove', event);
@@ -254,6 +249,8 @@ export default {
       if (bool) {
         this.lineElements.forEach((element) => {
           element.addEventListener('keydown', this.onKeyDown);
+          element.addEventListener('mousedown', this.onMouseDown, false);
+          element.addEventListener('click', this.onMouseClick, false);
           element.addEventListener('mousemove', this.onMouseMove, false);
           element.addEventListener('auxclick', this.onMouseRightClick, false);
           element.addEventListener('wheel', this.onMouseWheel, false);
@@ -261,6 +258,8 @@ export default {
       } else {
         this.lineElements.forEach((element) => {
           element.removeEventListener('keydown', this.onKeyDown);
+          element.removeEventListener('mousedown', this.onMouseDown, false);
+          element.removeEventListener('click', this.onMouseClick, false);
           element.removeEventListener('mousemove', this.onMouseMove, false);
           element.removeEventListener('auxclick', this.onMouseRightClick, false);
           element.removeEventListener('wheel', this.onMouseWheel, false);

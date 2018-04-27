@@ -14,11 +14,12 @@
 <script>
 import { Vector3 } from 'three';
 import { mapState } from 'vuex';
-// import EventBus from '../../../EventBus/EventBus';
+import Coordinate from './Common/Coordinate';
 
 export default {
   name: 'PlankCoordinate',
   inject: ['vglNamespace'],
+  mixins: [Coordinate],
   props: {
     plankName: {
       type: String,
@@ -41,17 +42,6 @@ export default {
       required: false,
     },
   },
-  mounted() {
-    this.addElementsToDOM();
-    this.setAsPlankCoordinateHelper();
-    this.changeEventHandler(true);
-    this.vglNamespace.beforeRender.push(this.updateStyle);
-    window.mdr = this;
-  },
-  beforeDestroy() {
-    this.changeEventHandler(false);
-    this.removeElements();
-  },
   data() {
     return {
       arrowHeadLength: 800,
@@ -73,12 +63,6 @@ export default {
         y: this.prevPosition.y + this.plankDimension.height / 2,
         z: this.prevPosition.z + this.plankDimension.depth / 2,
       };
-    },
-    domElement() {
-      return this.vglNamespace.renderers[0].inst.domElement;
-    },
-    cameraInst() {
-      return this.vglNamespace.cameras.camera1;
     },
     arrows() {
       const {
@@ -133,36 +117,6 @@ export default {
     },
   },
   methods: {
-    projectVectorTo2D(x, y, z) {
-      const p = new Vector3(x, y, z);
-      const vector = p.project(this.cameraInst);
-
-      vector.x = (vector.x + 1) / 2 * this.domElement.width - 70;
-      vector.y = -(vector.y - 1) / 2 * this.domElement.height + 30;
-
-      return vector;
-    },
-    select(object3d) {
-      // TODO
-      if (object3d) {
-        this.selectedArrow = object3d.name.split('_').pop();
-      } else {
-        this.selectedArrow = null;
-        this.updateStyle();
-      }
-    },
-    setAsPlankCoordinateHelper() {
-      const { arrows } = this.$refs;
-      if (arrows == null) return;
-      for (let i = 0; i < arrows.length; i += 1) {
-        arrows[i].inst.isCoordinate = true;
-        if (this.isGroupArrow) arrows[i].inst.isGroupArrow = true;
-        for (let ii = 0; ii < arrows[i].inst.children.length; ii += 1) {
-          arrows[i].inst.children[ii].name = arrows[i].inst.name;
-          arrows[i].inst.children[ii].isCoordinate = true;
-        }
-      }
-    },
     resize(name, position, vertex, magnetism) {
       // resize: name is the selected arrow name (1-1_dimension_arrow_upper)
       // resize: position is the mouse position while dragging
@@ -195,19 +149,14 @@ export default {
     },
     moveByDistance(direction, distance) {
       let newPosition = null;
+      const sign = direction.includes('-') ? -1 : 1;
 
-      if (direction === 'x') {
-        newPosition = { x: this.centerPivotPos.x + distance, y: this.plankPosition.y, z: this.plankPosition.z };
-      } else if (direction === '-x') {
-        newPosition = { x: this.centerPivotPos.x - distance, y: this.plankPosition.y, z: this.plankPosition.z };
-      } else if (direction === 'y') {
-        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y + distance, z: this.plankPosition.z };
-      } else if (direction === '-y') {
-        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y - distance, z: this.plankPosition.z };
-      } else if (direction === 'z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z + distance };
-      } else if (direction === '-z') {
-        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z - distance };
+      if (direction.includes('x')) {
+        newPosition = { x: this.centerPivotPos.x + distance * sign, y: this.plankPosition.y, z: this.plankPosition.z };
+      } else if (direction.includes('y')) {
+        newPosition = { x: this.plankPosition.x, y: this.centerPivotPos.y + distance * sign, z: this.plankPosition.z };
+      } else if (direction.includes('z')) {
+        newPosition = { x: this.plankPosition.x, y: this.plankPosition.y, z: this.centerPivotPos.z + distance * sign };
       }
 
       this.$emit('update:plankPosition', newPosition);
@@ -231,27 +180,16 @@ export default {
         this.plankPosition.z,
       );
 
-      switch (this.selectedArrow) {
-        case 'x':
-          inputPosition.x += this.arrows[0].length;
-          break;
-        case '-x':
-          inputPosition.x -= this.arrows[0].length;
-          break;
-        case 'y':
-          inputPosition.y += this.arrows[1].length;
-          break;
-        case '-y':
-          inputPosition.y -= this.arrows[1].length;
-          break;
-        case 'z':
-          inputPosition.z += this.arrows[2].length;
-          break;
-        case '-z':
-          inputPosition.z -= this.arrows[2].length;
-          break;
-        default:
-          break;
+      if (this.selectedArrow) {
+        const sign = this.selectedArrow.includes('-') ? -1 : 1;
+
+        if (this.selectedArrow.includes('x')) {
+          inputPosition.x += this.arrows[0].length * sign;
+        } else if (this.selectedArrow.includes('y')) {
+          inputPosition.y += this.arrows[1].length * sign;
+        } else if (this.selectedArrow.includes('z')) {
+          inputPosition.z += this.arrows[2].length * sign;
+        }
       }
 
       const vectorTop2D = this.projectVectorTo2D(inputPosition.x, inputPosition.y, inputPosition.z);
@@ -260,55 +198,6 @@ export default {
       vectorTop2D.y = Math.max(30, Math.min(vectorTop2D.y, rect.height - 50));
       this.inputElement.style.top = `${vectorTop2D.y}px`;
       this.inputElement.style.left = `${vectorTop2D.x}px`;
-    },
-    addElementsToDOM() {
-      const appDiv = document.getElementById('content-3d');
-      const container = document.createElement('div');
-      container.classList.add('coordinate-input-container');
-      this.inputElement = this.createInput();
-      container.appendChild(this.inputElement);
-      this.containerElement = container;
-      appDiv.insertBefore(container, appDiv.firstChild);
-    },
-    removeElements() {
-      const appDiv = document.getElementById('content-3d');
-      appDiv.removeChild(this.containerElement);
-    },
-    onKeyDown(event) {
-      if (event.key === 'Escape') {
-        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const auxclickEvent = new MouseEvent('auxclick', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(auxclickEvent);
-      } else if (event.key === 'Enter') {
-        const { value } = this.inputElement;
-        this.moveByDistance(this.selectedArrow, parseFloat(value) * 10);
-        this.inputElement.value = '0';
-        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const clickEvent = new MouseEvent('click', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(clickEvent);
-      } else {
-        this.onKeyUp();
-      }
-    },
-    onKeyUp() {
-      if (this.inputElement.value.length > 0 && this.inputElement.value !== '-') this.inputElement.value = parseFloat(this.inputElement.value);
-    },
-    changeEventHandler(bool) {
-      if (bool) {
-        this.inputElement.addEventListener('keydown', this.onKeyDown);
-        this.inputElement.addEventListener('keyup', this.onKeyUp);
-      } else {
-        this.inputElement.removeEventListener('keydown', this.onKeyDown);
-        this.inputElement.removeEventListener('keyup', this.onKeyUp);
-      }
     },
   },
 };

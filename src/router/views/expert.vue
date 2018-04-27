@@ -25,7 +25,10 @@ import App from '../../components/App';
 export default {
   name: 'Expert',
   components: {
-    App, [Card.name]: Card, [Button.name]: Button, [Input.name]: Input,
+    App,
+    [Card.name]: Card,
+    [Button.name]: Button,
+    [Input.name]: Input,
   },
   data() {
     return {

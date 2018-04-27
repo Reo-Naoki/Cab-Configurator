@@ -114,13 +114,14 @@
     </vgl-group>
     <!--------------->
 
-    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" />
+    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" :point-angles="shapePointAngles" :thick="thick"/>
     <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showStickers"/>
     <PlankEdges :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector" />
     <PlankCoordinate ref="coordinate" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
     <PlankDimensions ref="dimensions" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
-    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
+    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :connections="relatedConnections" v-if="visible"/>
+    <PlankDrill ref="drills" :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :works.sync="drillWorks" />
     <ShapeLines :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-points.sync="shapePoints" v-if="enableShapeEdit && isSelected && shapePoints" />
     <component v-if="pluginComponent" :is="pluginComponent" v-bind="pluginBinding"/>
 
@@ -147,6 +148,7 @@ import PlankCoordinate from '../Plugins/PlankCoordinate';
 import PlankDimensions from '../Plugins/PlankDimensions';
 import PlankConnections from '../Plugins/PlankConnections';
 import PlankExcentrique from '../Plugins/PlankExcentrique';
+import PlankDrill from '../Plugins/PlankDrill';
 import ShapeLines from '../Plugins/ShapeLines';
 
 export default {
@@ -159,6 +161,7 @@ export default {
     PlankDimensions,
     PlankConnections,
     PlankExcentrique,
+    PlankDrill,
     ShapeLines,
   },
   inject: ['vglNamespace'],
@@ -207,6 +210,10 @@ export default {
       type: Array,
       required: false,
     },
+    works: {
+      type: Array,
+      required: false,
+    },
     groupName: {
       type: String,
       required: false,
@@ -245,6 +252,7 @@ export default {
       'enableResizing',
       'enableMoving',
       'enableShapeEdit',
+      'enableDrillEdit',
       'moveDirection',
       'prevPosition',
     ]),
@@ -254,13 +262,15 @@ export default {
     isSelected() {
       if (this.selectedObject3D) {
         const selectedObject = this.selectedObject3D.object3d;
-        if (this.enableShapeEdit) {
-          if (selectedObject.isCoordinate && selectedObject.name.split('_')[0] === this.id) return true;
-          if (selectedObject.isDimension && selectedObject.name.split('_')[0] === this.id) return true;
-          if (selectedObject.isShapeVertex && selectedObject.name.split('_')[0] === this.id) return true;
+        const { name } = selectedObject;
+        if (this.enableShapeEdit || this.enableDrillEdit) {
+          if ((selectedObject.isCoordinate || selectedObject.isDimension || selectedObject.isShapeVertex || selectedObject.isDrillGeometry) && name.split('_')[0] === this.id) {
+            return true;
+          }
         } else {
-          if (selectedObject.isCoordinate && selectedObject.name.split('_coordinate')[0] === this.id) return true;
-          if (selectedObject.isDimension && selectedObject.name.split('_dimensions')[0] === this.id) return true;
+          if (selectedObject.isCoordinate && name.split('_coordinate')[0] === this.id) return true;
+          if (selectedObject.isDimension && name.split('_dimensions')[0] === this.id) return true;
+          if (selectedObject.isConnectionBubble && (name.split('_')[1] === this.id || name.split('_')[2] === this.id)) return true;
         }
         if (selectedObject.name === this.id) return true;
       }
@@ -341,6 +351,18 @@ export default {
       get() { return this.points; },
       set(val) { this.$emit('update:points', val); },
     },
+    shapePointAngles() {
+      if (this.points) {
+        return this.points.map((p, index) => {
+          const prevIndex = (index - 1 + this.points.length) % this.points.length;
+          const nextIndex = (index + 1) % this.points.length;
+          const prevVect = new Vector2(this.points[prevIndex][0] - p[0], this.points[prevIndex][1] - p[1]);
+          const nextVect = new Vector2(this.points[nextIndex][0] - p[0], this.points[nextIndex][1] - p[1]);
+          return Math.round((((prevVect.angle() - nextVect.angle()) / Math.PI * 180 + 360) % 360) * 100) / 100;
+        });
+      }
+      return null;
+    },
     fixedPosition: {
       get() {
         return new Vector3(
@@ -356,6 +378,10 @@ export default {
           z: z - (this.dimensionsByType.depth / 2),
         };
       },
+    },
+    drillWorks: {
+      get() { return this.works; },
+      set(val) { this.$emit('update:works', val); },
     },
     boundingBox() {
       const { x, y, z } = this.fixedPosition;
@@ -411,7 +437,7 @@ export default {
   },
   beforeDestroy() {
     // eslint-disable-next-line no-underscore-dangle
-    if (window.panels[this.id]._uid === this._uid) delete window.panels[this.id];
+    if (window.panels[this.id] && window.panels[this.id]._uid === this._uid) delete window.panels[this.id];
   },
   mounted() {
     this.setAsPanel();
@@ -464,10 +490,11 @@ export default {
       const mouseScreenPoint = this.getMouseScreenPoint(event);
       // if (!this.moving) this.$store.dispatch('Panels/deletePanelConnections', { id: this.id });
 
-      if (this.enableShapeEdit) {
+      if (this.enableShapeEdit || this.enableDrillEdit) {
         this.moving = true;
         const closestVertex = this.$refs.vertices.getNearestVerticeInWorld(mouseScreenPoint);
-        window.verticeCoordinates[mesh.name.split('_coordinate')[0]].move(mesh.name, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
+        if (this.enableShapeEdit) window.verticeCoordinates[mesh.name.split('_coordinate')[0]].move(mesh.name, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
+        if (this.enableDrillEdit) window.drillCoordinates[mesh.name.split('_coordinate')[0]].move(mesh.name, position, closestVertex ? closestVertex.vertex.position : false, magnetism);
         return;
       }
 
@@ -505,6 +532,9 @@ export default {
     createPoint(point) {
       this.$refs.vertices.createPoint(point);
     },
+    createDrill(point) {
+      this.$refs.drills.createDrill(point);
+    },
     resize(mesh, position, newVector, magnetism) {
       if (mesh.isDimension) this.$refs.dimensions.resize(mesh.name, position, newVector, magnetism);
       else this.$refs.coordinate.resize(mesh.name, position, newVector, magnetism);
@@ -528,18 +558,24 @@ export default {
         this.$refs.vertices.resetAllVerticesVisibility();
         this.moving = false;
       }
+      const selectedObject = this.selectedObject3D.object3d;
+      const { name } = selectedObject;
 
       if (this.enableShapeEdit) {
-        const { name } = this.selectedObject3D.object3d;
-        if (this.selectedObject3D.object3d.isCoordinate && isSelected) window.verticeCoordinates[name.split('_coordinate')[0]].select(this.selectedObject3D.object3d);
-        else if (this.selectedObject3D.object3d.isCoordinate) window.verticeCoordinates[name.split('_coordinate')[0]].select(null);
+        if (selectedObject.isCoordinate && isSelected) window.verticeCoordinates[name.split('_coordinate')[0]].select(selectedObject);
+        else if (selectedObject.isCoordinate) window.verticeCoordinates[name.split('_coordinate')[0]].select(null);
+        return;
+      }
+      if (this.enableDrillEdit) {
+        if (selectedObject.isCoordinate && isSelected) window.drillCoordinates[name.split('_coordinate')[0]].select(selectedObject);
+        else if (selectedObject.isCoordinate) window.drillCoordinates[name.split('_coordinate')[0]].select(null);
         return;
       }
 
-      if (this.selectedObject3D.object3d.isCoordinate && isSelected) this.$refs.coordinate.select(this.selectedObject3D.object3d);
-      else if (this.selectedObject3D.object3d.isDimension && isSelected) this.$refs.dimensions.select(this.selectedObject3D.object3d);
-      else if (this.selectedObject3D.object3d.isCoordinate) this.$refs.coordinate.select(null);
-      else if (this.selectedObject3D.object3d.isDimension) this.$refs.dimensions.select(null);
+      if (selectedObject.isCoordinate && isSelected) this.$refs.coordinate.select(selectedObject);
+      else if (selectedObject.isDimension && isSelected) this.$refs.dimensions.select(selectedObject);
+      else if (selectedObject.isCoordinate) this.$refs.coordinate.select(null);
+      else if (selectedObject.isDimension) this.$refs.dimensions.select(null);
     },
     setCollide(value) {
       this.collide = value;

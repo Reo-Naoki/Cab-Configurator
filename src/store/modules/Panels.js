@@ -18,6 +18,9 @@ const state = {
   enableMeasure: false,
   enableShapeEdit: false,
   enableCreatePoint: false,
+  enableDrillEdit: false,
+  enableCreateDrill: false,
+  enableLayerManager: false,
   rulerStartPoint: new Vector3(0, 0, 0),
   rulerEndPoint: new Vector3(0, 0, 0),
   rulerPointStep: 0,
@@ -33,6 +36,9 @@ function initEnableState() {
   state.enableMeasure = false;
   state.enableShapeEdit = false;
   state.enableCreatePoint = false;
+  state.enableDrillEdit = false;
+  state.enableCreateDrill = false;
+  state.enableLayerManager = false;
 }
 
 function setRulerEndPoint(point) {
@@ -77,8 +83,23 @@ const getters = {
         id: panel.id,
         edges: panel.edges,
       };
+
       if (panel.layer !== 'Structure') newPanel.layer = panel.layer;
-      if (points && points !== [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]]) newPanel.points = points;
+      if (points) {
+        if (points.length !== 4) {
+          newPanel.points = points;
+        } else {
+          const corners = [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]];
+          for (let i = 0; i < points.length; i += 1) {
+            if (points[i][0] !== corners[i][0] || points[i][1] !== corners[i][1]) {
+              newPanel.points = points;
+              break;
+            }
+          }
+        }
+        if (panel.works) newPanel.works = panel.works;
+      }
+
       return newPanel;
     });
     groups.forEach(group => newPanels.push(group));
@@ -102,9 +123,11 @@ const mutations = {
     panels.forEach((p) => {
       if (p.ptype !== 'group_stddrawer') {
         const resizable = !p.ptype.includes('Hard');
+        const points = p.points ? p.points.map(point => [Math.round(point[0] * 10) / 10, Math.round(point[1] * 10) / 10]) : null;
+
         s.panels.push({
           ...p,
-          points: p.points || [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]],
+          points: resizable ? (points || [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]]) : null,
           ptype: resizable ? p.ptype : p.ptype.split('-')[1],
           id: p.id.split('-')[0],
           material: p.material.toString(),
@@ -154,8 +177,24 @@ const mutations = {
       resizable: true,
     });
   },
+  duplicatePanel(s, p) {
+    Vue.set(s.panels, s.panels.length, {
+      ...p,
+      points: p.points ? p.points.map(point => [point[0], point[1]]) : [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]],
+      name: `${p.name}(${s.panels.filter(panel => panel.name.includes(p.name)).length})`,
+    });
+    EventBus.$emit('save');
+  },
   setLayers(s, data) {
     s.layers = data;
+  },
+  updateLayers(s, data) {
+    s.panels.forEach((panel, index) => {
+      if (panel.layer) {
+        const layerIndex = data.old.findIndex(layer => layer.name === panel.layer);
+        if (layerIndex) s.panels[index].layer = data.new[layerIndex].name || 'Structure';
+      }
+    });
   },
   setPrevPosition(s, prevPosition) {
     s.prevPosition = prevPosition;
@@ -218,6 +257,17 @@ const mutations = {
   },
   enableCreatePoint(s, isEnable = true) {
     s.enableCreatePoint = isEnable;
+  },
+  enableDrillEdit(s, isEnable = true) {
+    initEnableState();
+    s.enableDrillEdit = isEnable;
+  },
+  enableCreateDrill(s, isEnable = true) {
+    s.enableCreateDrill = isEnable;
+  },
+  enableLayerManager(s, isEnable = true) {
+    initEnableState();
+    s.enableLayerManager = isEnable;
   },
   setRulerPoint(s, { point, move = true }) {
     if (move && s.rulerPointStep === 1) {
@@ -342,7 +392,7 @@ const actions = {
       context.dispatch('deserialize', data).then(() => EventBus.$emit('save'));
       return null;
     }
-    console.error = {};
+    // console.error = {};
     return new Promise(async (resolve) => {
       // use on importing new cabinet
       const serializedData = context.getters.serialize;
@@ -575,7 +625,7 @@ const actions = {
     // deleting panels means also removing related connections
     return new Promise(async (resolve, reject) => {
       try {
-        await context.dispatch('deletePanelConnections', { id });
+        await context.dispatch('deletePanelConnections', id);
         context.commit('deletePanel', id);
         resolve();
       } catch (e) {
@@ -606,7 +656,7 @@ const actions = {
       const centerBB = new Vector3();
       ((new Box3()).setFromObject(window.root.inst)).getSize(worldBB);
       ((new Box3()).setFromObject(window.root.inst)).getCenter(centerBB);
-      panelPosition.setZ((centerBB.z + worldBB.z / 2) / 10 + (worldBB.z > 0 ? 500 : 0)); // don't forget to downscale to mm
+      panelPosition.setZ((centerBB.z + worldBB.z / 2) / 10 + (worldBB.z > 0 ? 200 : 0)); // don't forget to downscale to mm
     }
     context.commit('addPanel', {
       x: 350,
@@ -618,6 +668,22 @@ const actions = {
       material: '1',
       id: String(context.getters.maxID + 1),
       edges: '0-0-0-0',
+    });
+  },
+  duplicatePanel(context, panel) {
+    const panelPosition = new Vector3();
+    if (window.root) {
+      // root is the global group ThreeJS object
+      const worldBB = new Vector3();
+      const centerBB = new Vector3();
+      ((new Box3()).setFromObject(window.root.inst)).getSize(worldBB);
+      ((new Box3()).setFromObject(window.root.inst)).getCenter(centerBB);
+      panelPosition.setZ((centerBB.z + worldBB.z / 2) / 10 + (worldBB.z > 0 ? 200 : 0)); // don't forget to downscale to mm
+    }
+    context.commit('duplicatePanel', {
+      ...panel,
+      pos: [panelPosition.z, 0, 0],
+      id: String(context.getters.maxID + 1),
     });
   },
   save(context, data) {
@@ -716,19 +782,19 @@ const actions = {
       console.log('Add to cart success, redirecting');
       sendMessage('cart');
     } else {
-      Message.error('Erreur, enregistrez votre projet contactez le service client');
+      Message.error('Erreur, enregistrez votre projet et contactez le service client');
     }
   },
   requestGeneralData(context) {
     // ask for price
     return new Promise(async (resolve, reject) => {
       context.commit('setPrice');
-      callDajax('sendrlist', context.getters.serialize)
+      callDajax('draw', { design: context.getters.serialize })
         .then((response) => {
           console.log('sendrlist returned result');
-          if (response.data.heroresult) {
-            const result = JSON.parse(response.data.heroresult);
-            context.commit('setPrice', result.price);
+          if (response.data.serverresult) {
+            const result = JSON.parse(response.data.serverresult);
+            context.commit('setPrice', result.data.price);
           }
           resolve();
         })

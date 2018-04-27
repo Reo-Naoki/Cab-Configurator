@@ -1,10 +1,10 @@
 <template>
   <vgl-group>
-    <div v-for="vertex in vertices" :key="vertex.name">
+    <div v-for="(vertex, index) in vertices" :key="vertex.name">
       <div v-if="vertex.visible">
         <vgl-sphere-geometry
           :name="`${vertex.name}vertex-geometry`"
-          :radius="sizeByDistanceToCamera(vertex.position)"
+          :radius="sizeByDistanceToCamera(vertex.position, index)"
           :width-segments="6"
           :height-segments="6" />
         <vgl-mesh ref="vertices" :geometry="`${vertex.name}vertex-geometry`" v-bind="vertex" />
@@ -14,7 +14,8 @@
           :plank-dimension.sync="dimensionsByType"
           :plank-type="plankType"
           :vertice-position="vertex.position"
-          :shape-points.sync="shapePoints" />
+          :shape-points.sync="shapePoints"
+          :thick="thick" />
       </div>
     </div>
   </vgl-group>
@@ -54,9 +55,13 @@ export default {
       type: Array,
       required: false,
     },
-    radius: {
+    pointAngles: {
+      type: Array,
+      required: false,
+    },
+    thick: {
       type: Number,
-      default: 1,
+      required: true,
     },
   },
   mounted() {
@@ -222,9 +227,12 @@ export default {
         plankPosition: { x: px, y: py, z: pz },
         plankDimension: { width, depth, height },
       } = this;
-      if (this.plankType === 'FP') return `${px + point[1] * 10 - width / 2} ${py - height / 2 * type} ${pz + point[0] * 10 - depth / 2}`;
-      if (this.plankType === 'VP') return `${px + point[0] * 10 - width / 2} ${py + point[1] * 10 - height / 2} ${pz - depth / 2 * type}`;
-      if (this.plankType === 'VDP') return `${px + width / 2 * type} ${py + point[1] * 10 - height / 2} ${pz + point[0] * 10 - depth / 2}`;
+      const x = Math.round(point[0] * 10) / 10;
+      const y = Math.round(point[1] * 10) / 10;
+
+      if (this.plankType === 'FP') return `${px + y * 10 - width / 2} ${py - height / 2 * type} ${pz + x * 10 - depth / 2}`;
+      if (this.plankType === 'VP') return `${px + x * 10 - width / 2} ${py + y * 10 - height / 2} ${pz - depth / 2 * type}`;
+      if (this.plankType === 'VDP') return `${px + width / 2 * type} ${py + y * 10 - height / 2} ${pz + x * 10 - depth / 2}`;
       return null;
     },
     showCoordinateArrows(name) {
@@ -250,11 +258,15 @@ export default {
         .flatMap(c => c.$refs.vertices.vertices) // flatMap and get a list of every vgl-mesh vertex components
         .map(c => c); // get only ThreeJS instance of those component
     },
-    sizeByDistanceToCamera(vertexPosition) {
+    sizeByDistanceToCamera(vertexPosition, index) {
       if (this.enableShapeEdit && this.selectedObject3D.object3d.name.split('_')[0] === this.plankName) {
-        if (this.plankType === 'FP') return this.plankDimension.height / 3;
-        if (this.plankType === 'VP') return this.plankDimension.depth / 3;
-        if (this.plankType === 'VDP') return this.plankDimension.width / 3;
+        if (this.pointAngles[index / 3] > 180) {
+          const r = 70 / Math.tan(Math.PI - this.pointAngles[index / 3] * Math.PI / 360);
+          if (this.plankType === 'FP') return Math.min(this.plankDimension.height / 2 + 20, Math.max(40, r));
+          if (this.plankType === 'VP') return Math.min(this.plankDimension.depth / 2 + 20, Math.max(40, r));
+          if (this.plankType === 'VDP') return Math.min(this.plankDimension.width / 2 + 20, Math.max(40, r));
+        }
+        return 40;
       }
       const [x, y, z] = vertexPosition.split(' ').map(v => parseInt(v, 10));
       const p = new Vector3(x, y, z);
@@ -669,14 +681,23 @@ export default {
       if (minIndex > -1) {
         const {
           plankName,
-          plankPosition: { y: py, z: pz },
-          plankDimension: { depth, height },
+          plankPosition: { x: px, y: py, z: pz },
+          plankDimension: { width, depth, height },
+          plankType,
         } = this;
 
-        const shapePoints = Array.from(window.panels[plankName].shapePoints);
-        const edges = Array.from(window.panels[plankName].edges.split('-'));
-        shapePoints.splice(minIndex, 0, [parseInt((point.z + depth / 2 - pz) / 10, 10), parseInt((point.y + height / 2 - py) / 10, 10)]);
+        const shapePoints = window.panels[plankName].shapePoints.map(p => [p[0], p[1]]);
+        const edges = window.panels[plankName].edges.split('-');
+
+        if (plankType === 'FP') {
+          shapePoints.splice(minIndex, 0, [parseInt((point.z + depth / 2 - pz) / 10, 10), parseInt((point.x + width / 2 - px) / 10, 10)]);
+        } else if (plankType === 'VP') {
+          shapePoints.splice(minIndex, 0, [parseInt((point.x + width / 2 - px) / 10, 10), parseInt((point.y + height / 2 - py) / 10, 10)]);
+        } else if (plankType === 'VDP') {
+          shapePoints.splice(minIndex, 0, [parseInt((point.z + depth / 2 - pz) / 10, 10), parseInt((point.y + height / 2 - py) / 10, 10)]);
+        }
         edges.splice(minIndex, 0, '0');
+
         window.panels[plankName].shapePoints = shapePoints;
         window.panels[plankName].edges = edges.join('-');
         this.$store.commit('Camera/selectObject3D', { object3d: { ...window.panels[plankName], name: plankName, isPanel: true } });

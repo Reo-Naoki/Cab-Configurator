@@ -1,50 +1,57 @@
 <template>
   <div class="menu-left" @click.stop="">
-    <div v-if="!enableShapeEdit">
-    <div class="wrapper-name-panel" v-if="panel != null || group != null">
-      <div v-if="panel != null">Planche n°{{ panel.id }}</div>
-      <div v-else-if="group != null">Group n°{{ selectedObject3DIndex + 1 }}</div>
-      <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()"><em class="el-icon-rank" /></div>
-      <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}${(panel != null && !panel.resizable) || (group != null && !group.resizable) ? ' disabled' :''}`]"
-          @click="(panel != null && panel.resizable) || (group != null && group.resizable) ? resizePanel() : null">◱</div>
-      <div class="round-icon-2 medium-emphasis red" @click="deletePanel()"><em class="el-icon-delete" /></div>
+    <ShapeEditor v-if="enableShapeEdit" />
+    <DrillEditor v-else-if="enableDrillEdit" />
+    <div v-else>
+      <div class="wrapper-name-panel" v-if="panel != null || group != null">
+        <div v-if="panel != null">Planche n°{{ panel.id }}</div>
+        <div v-else-if="group != null">Group n°{{ selectedObject3DIndex + 1 }}</div>
+        <div v-bind:class="[`round-icon-2${enableMoving ? '' : ' medium-emphasis'}`]" @click="movePanel()" title="Move"><em class="el-icon-rank" /></div>
+        <div v-bind:class="[`round-icon-2${enableResizing ? '' : ' medium-emphasis'}${(panel != null && !panel.resizable) || (group != null && !group.resizable) ? ' disabled' :''}`]"
+            @click="(panel != null && panel.resizable) || (group != null && group.resizable) ? resizePanel() : null" title="Resize">◱</div>
+        <div class="round-icon-2 medium-emphasis red" @click="deletePanel()" title="Delete"><em class="el-icon-delete" /></div>
+      </div>
+      <GroupDimensionEditor />
+      <EdgesDisplayer />
+      <LayerEditor :layers="layers"/>
+      <DimensionEditor />
+      <TypeEditor />
+      <PositionEditor />
+      <ColorEditor />
+      <ConnectionEditor />
+      <LayerManager :layers="layers"/>
     </div>
-    <EdgesDisplayer />
-    <LayerEditor :layers="layers"/>
-    <GroupDimensionEditor />
-    <DimensionEditor />
-    <TypeEditor />
-    <PositionEditor />
-    <ColorEditor />
-    <ConnectionEditor />
-    </div>
-    <ShapeEditor v-else/>
   </div>
 </template>
 
 <script>
 import { mapState } from 'vuex';
 import GroupDimensionEditor from './Plugins/GroupDimensionEditor';
-import DimensionEditor from './Plugins/DimensionEditor';
-import PositionEditor from './Plugins/PositionEditor';
-import TypeEditor from './Plugins/TypeEditor';
-import ColorEditor from './Plugins/ColorEditor';
 import EdgesDisplayer from './Plugins/EdgesDisplayer';
 import LayerEditor from './Plugins/LayerEditor';
+import DimensionEditor from './Plugins/DimensionEditor';
+import TypeEditor from './Plugins/TypeEditor';
+import PositionEditor from './Plugins/PositionEditor';
+import ColorEditor from './Plugins/ColorEditor';
+import ConnectionEditor from './Plugins/Connection/ConnectionEditor';
+import LayerManager from './Plugins/Layer/LayerManager';
 import ShapeEditor from './Plugins/ShapeEditor';
+import DrillEditor from './Plugins/DrillEditor';
 
 export default {
   name: 'PlankEditor',
   components: {
-    ColorEditor,
-    TypeEditor,
-    PositionEditor,
-    DimensionEditor,
     GroupDimensionEditor,
     EdgesDisplayer,
     LayerEditor,
+    DimensionEditor,
+    TypeEditor,
+    PositionEditor,
+    ColorEditor,
+    ConnectionEditor,
+    LayerManager,
     ShapeEditor,
-    ConnectionEditor: () => import(/* webpackChunkName: "connection-editor" */ './Plugins/Connection/ConnectionEditor'),
+    DrillEditor,
   },
   props: ['layers'],
   computed: {
@@ -54,6 +61,7 @@ export default {
       'enableMoving',
       'enableResizing',
       'enableShapeEdit',
+      'enableDrillEdit',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',

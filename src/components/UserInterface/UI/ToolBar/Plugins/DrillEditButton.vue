@@ -1,12 +1,10 @@
 <template>
-  <el-button class="toolbar-button" @click="shapeEdit()" :style="`${enableShapeEdit ? 'backgroundColor:lightgray' : ''}`" title="Shape Edit" :disabled="isDisable">
+  <el-button class="toolbar-button" @click="drillEdit()" :style="`${enableDrillEdit ? 'backgroundColor:lightgray' : ''}`" title="Drill Edit" :disabled="isDisable">
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
         width="1.7em" height="1.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-        preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-      <path d="M7.83 20A3.001 3.001 0 1 1 4 16.17V7.83A3.001 3.001 0 1 1 7.83 4h8.34A3.001 3.001 0 1 1 20 7.83v8.34A3.001 3.001 0 1 1
-              16.17 20H7.83zm0-2h8.34A3.008 3.008 0 0 1 18 16.17V7.83A3.008 3.008 0 0 1 16.17 6H7.83A3.008 3.008 0 0 1 6 7.83v8.34A3.008
-              3.008 0 0 1 7.83 18zM5 6a1 1 0 1 0 0-2a1 1 0 0 0 0 2zm14 0a1 1 0 1 0 0-2a1 1 0 0 0 0 2zm0 14a1 1 0 1 0 0-2a1 1 0 0 0 0 2zM5
-              20a1 1 0 1 0 0-2a1 1 0 0 0 0 2z" :fill="isDisable ? '#dddddd' : '#888888'"/>
+        preserveAspectRatio="xMidYMid meet" viewBox="2 1 30 30">
+      <circle cx="16" cy="16" r="5" :fill="isDisable ? '#dddddd' : '#888888'"/>
+      <path d="M26 28H6a2.002 2.002 0 0 1-2-2V6a2.002 2.002 0 0 1 2-2h20a2.002 2.002 0 0 1 2 2v20a2.002 2.002 0 0 1-2 2zM6 6v20h20.001L26 6z" :fill="isDisable ? '#dddddd' : '#888888'"/>
     </svg>
   </el-button>
 </template>
@@ -16,13 +14,13 @@ import { Button } from 'element-ui';
 import { mapState } from 'vuex';
 
 export default {
-  name: 'ShapeEditButton',
+  name: 'DrillEditButton',
   components: {
     [Button.name]: Button,
   },
   computed: {
     ...mapState('Panels', [
-      'enableShapeEdit',
+      'enableDrillEdit',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
@@ -35,8 +33,8 @@ export default {
     },
   },
   methods: {
-    shapeEdit() {
-      this.$store.commit('Panels/enableShapeEdit', !this.enableShapeEdit);
+    drillEdit() {
+      this.$store.commit('Panels/enableDrillEdit', !this.enableDrillEdit);
       this.$store.dispatch('DisplayManager/hideItems', ['edges-selector']);
     },
   },

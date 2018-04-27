@@ -1,6 +1,6 @@
 <template>
   <div class="wrapper-switch">
-    <LayerDisplayer v-for="(layer) in layers" :key="layer.name" :layer="layer"/>
+    <LayerDisplayer v-for="(layer, index) in layers" :key="index" :layer="layer"/>
     <el-divider v-if="layers.length > 0" margin='1px 0' height="3px"/>
     <ColorPaletteDisplayer />
     <ConnectionsDisplayer />

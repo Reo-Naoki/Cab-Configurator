@@ -431,12 +431,8 @@ export default {
     onKeyDown(event) {
       if (event.key === 'Escape') {
         const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const auxclickEvent = new MouseEvent('auxclick', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(auxclickEvent);
+        const keyboardEvent = new KeyboardEvent('keydown', event, false);
+        appDiv.dispatchEvent(keyboardEvent);
       } else if (event.key === 'Enter') {
         const { value } = this.inputElement;
         this.resizeByValue(this.selectedArrow, parseFloat(value) * 10);

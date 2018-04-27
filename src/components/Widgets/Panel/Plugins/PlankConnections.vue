@@ -6,11 +6,12 @@
       :width-segments="6"
       :height-segments="6" />
     <vgl-sphere-geometry
-      name="bubble_big" :radius="400"
+      name="bubble_big"
+      :radius="400"
       :width-segments="6"
       :height-segments="6" />
     <div v-for="(connection, index) in bubbles" :key="`bubble_${plankID}_${connection.center.x}_${connection.center.y}_${connection.center.z}_${connection.type || 'default'}_${index}`">
-      <vgl-mesh :geometry="(connection.ilength >= 6000 && connection.type === undefined) ? 'bubble_small' : 'bubble_big'"
+      <vgl-mesh :geometry="(connection.ilength >= 6000 && (connection.type === undefined || connection.type === 'rafix')) ? 'bubble_small' : 'bubble_big'"
                 :material="connection.material"
                 :position="`${connection.center.x} ${connection.center.y} ${connection.center.z}`"
                 :name="`bubble_${plankID}_${connection.p2}`"
@@ -46,6 +47,7 @@ export default {
       return this.connections.filter(c => c.p1 === Number(this.plankID))
         .filter((c) => {
           if (c.isHidden) return false;
+          if (!window.panels[c.p1] || !window.panels[c.p2]) return false;
           if (!window.panels[c.p1].visible || !window.panels[c.p2].visible) return false;
           if (this.selectedObject3D) {
             const selectedObject = this.selectedObject3D.object3d;

@@ -29,6 +29,10 @@ export default class {
     this.type = 'undefined';
   }
 
+  setAsRafixConnection() {
+    this.type = 'rafix';
+  }
+
   setAsFreeConnection() {
     this.type = 'free';
   }
@@ -37,11 +41,11 @@ export default class {
     this.type = 'holeline32';
   }
 
-  setAsHDF() {
+  setAsHDFConnection() {
     this.type = 'hdfgrove';
   }
 
-  setAsDoor() {
+  setAsDoorConnection() {
     this.type = 'hinged';
   }
 
@@ -71,12 +75,12 @@ export default class {
     return this.type !== 'undefined' && this.type !== 'free';
   }
 
-  get isHingedConnection() {
-    return this.type === 'hinged';
-  }
-
   get isUndefinedConnection() {
     return this.type === 'undefined';
+  }
+
+  get isRafixConnection() {
+    return this.type === 'rafix';
   }
 
   get isFreeConnection() {
@@ -85,6 +89,10 @@ export default class {
 
   get isHDFConnection() {
     return this.type === 'hdfgrove';
+  }
+
+  get isHingedConnection() {
+    return this.type === 'hinged';
   }
 
   get isDefaultConnection() {

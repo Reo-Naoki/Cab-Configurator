@@ -37,7 +37,9 @@ export default {
       'enableResizing',
       'enableMeasure',
       'enableShapeEdit',
+      'enableDrillEdit',
       'enableCreatePoint',
+      'enableCreateDrill',
     ]),
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
@@ -86,7 +88,10 @@ export default {
     },
     objects() {
       return Object.values(this.vglNamespace.object3ds)
-        .filter(obj => (obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isPhysicalGeometry || obj.isConnectionBubble || (obj.isShapeVertex && this.enableShapeEdit)) && obj.visible);
+        .filter(obj => (obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isConnectionBubble
+          || (obj.isPhysicalGeometry && (!this.enableShapeEdit || (this.enableShapeEdit && this.enableCreatePoint)))
+          || (obj.isShapeVertex && this.enableShapeEdit)
+          || (obj.isDrillGeometry && this.enableDrillEdit)) && obj.visible);
     },
     childObjects() {
       return this.vglNamespace.object3ds;
@@ -168,7 +173,7 @@ export default {
         this.domElement.style.cursor = 'crosshair';
         return;
       }
-      if (this.enableShapeEdit) {
+      if (this.enableShapeEdit || this.enableDrillEdit) {
         if (this.selected && this.selected.isCoordinate) {
           this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
             this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
@@ -185,9 +190,9 @@ export default {
           }
           this.domElement.style.cursor = 'move';
         } else if (intersects.length > 0) {
-          if (this.enableCreatePoint && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
+          if ((this.enableCreatePoint || this.enableCreateDrill) && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
             this.domElement.style.cursor = 'copy';
-          } else if (intersects[0].object.isShapeVertex || intersects[0].object.isCoordinate) {
+          } else if (intersects[0].object.isShapeVertex || intersects[0].object.isDrillGeometry || intersects[0].object.isCoordinate) {
             this.domElement.style.cursor = 'pointer';
           } else {
             this.domElement.style.cursor = 'auto';
@@ -269,14 +274,14 @@ export default {
         this.$emit('rulerpoint', { event, rulerPoint });
         return;
       }
-      if (this.enableShapeEdit) {
+      if (this.enableShapeEdit || this.enableDrillEdit) {
         if (this.selected) {
           this.$emit('dragend', this.selected);
           this.$emit('hoveroff');
           this.selected = null;
           this.domElement.style.cursor = 'auto';
         } else if (intersects.length > 0 && this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
-          if (intersects[0].object.isShapeVertex || intersects[0].object.isCoordinate) {
+          if (intersects[0].object.isShapeVertex || intersects[0].object.isDrillGeometry || intersects[0].object.isCoordinate) {
             this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
               this.worldPosition.setFromMatrixPosition(intersects[0].object.matrixWorld));
 
@@ -290,6 +295,9 @@ export default {
           } else if (this.enableCreatePoint && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
             this.$emit('createpoint', intersects[0].point);
             this.$store.commit('Panels/enableCreatePoint', false);
+          } else if (this.enableCreateDrill && (intersects[0].object.name.split('_')[0] === this.selectedObject3D.object3d.name.split('_')[0])) {
+            this.$emit('createdrill', intersects[0].point);
+            this.$store.commit('Panels/enableCreateDrill', false);
           }
         } else {
           this.domElement.style.cursor = 'auto';
@@ -345,7 +353,7 @@ export default {
       event.preventDefault();
 
       if (this.enableMeasure) {
-        if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+        if (event.type === 'keydown' || this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
           this.$store.commit('Panels/enableMeasure', false);
           this.$store.commit('Panels/setMoveDirection');
           this.$emit('hoveroff');
@@ -353,12 +361,15 @@ export default {
         }
         return;
       }
-      if (this.enableShapeEdit) {
-        if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+      if (this.enableShapeEdit || this.enableDrillEdit) {
+        if (event.type === 'keydown' || this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
           if (this.enableCreatePoint) {
             this.$store.commit('Panels/enableCreatePoint', false);
+          } else if (this.enableCreateDrill) {
+            this.$store.commit('Panels/enableCreateDrill', false);
           } else {
             this.$store.commit('Panels/enableShapeEdit', false);
+            this.$store.commit('Panels/enableDrillEdit', false);
             this.$emit('hoveroff');
           }
           this.domElement.style.cursor = 'auto';
@@ -430,7 +441,7 @@ export default {
     onDocumentKeyDown(event) {
       event.preventDefault();
 
-      if (this.selected || this.enableMeasure) {
+      if (this.selected || this.enableMeasure || this.enableShapeEdit || this.enableDrillEdit) {
         switch (event.code) {
           case 'Escape':
             this.onDocumentRightMouseClick(event);

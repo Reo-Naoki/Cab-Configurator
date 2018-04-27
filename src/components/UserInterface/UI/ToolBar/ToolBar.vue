@@ -2,6 +2,8 @@
   <div class="wrapper-switch">
     <RulerButton />
     <ShapeEditButton />
+    <DrillEditButton />
+    <DuplicateButton />
   </div>
 </template>
 
@@ -9,12 +11,16 @@
 
 import RulerButton from './Plugins/RulerButton';
 import ShapeEditButton from './Plugins/ShapeEditButton';
+import DrillEditButton from './Plugins/DrillEditButton';
+import DuplicateButton from './Plugins/DuplicateButton';
 
 export default {
   name: 'ToolBar',
   components: {
     RulerButton,
     ShapeEditButton,
+    DrillEditButton,
+    DuplicateButton,
   },
 };
 </script>

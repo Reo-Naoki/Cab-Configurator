@@ -22,7 +22,8 @@
                    @hovermove="handleHoverMove"
                    @rulerpoint="handleRulerPoint"
                    @rulermove="handleRulerMove"
-                   @createpoint="handleCreatePoint" />
+                   @createpoint="handleCreatePoint"
+                   @createdrill="handleCreateDrill" />
     <Connections ref="connections"/>
   </div>
 </template>
@@ -54,6 +55,7 @@ export default {
       'enableResizing',
       'enableMeasure',
       'enableShapeEdit',
+      'enableDrillEdit',
       'rulerStartPoint',
       'rulerEndPoint',
       'rulerPointStep',
@@ -68,6 +70,7 @@ export default {
     window.panels = {};
     window.groups = {};
     window.verticeCoordinates = {};
+    window.drillCoordinates = {};
     this.setStoreWatcher();
   },
   mounted() { window.root = this.$refs.root; },
@@ -105,6 +108,15 @@ export default {
         this.$store.commit('Camera/selectObject3D', { object3d });
         if (object3d.isCoordinate) {
           this.$store.commit('Panels/setPrevPosition', window.verticeCoordinates[name.split('_coordinate')[0]].position);
+          this.$store.commit('Panels/setPrevDimension', window.panels[name.split('_')[0]].dimension);
+          window.panels[object3d.name.split('_')[0]].setDragging(true);
+        }
+        return;
+      }
+      if (this.enableDrillEdit) {
+        this.$store.commit('Camera/selectObject3D', { object3d });
+        if (object3d.isCoordinate) {
+          this.$store.commit('Panels/setPrevPosition', window.drillCoordinates[name.split('_coordinate')[0]].position);
           this.$store.commit('Panels/setPrevDimension', window.panels[name.split('_')[0]].dimension);
           window.panels[object3d.name.split('_')[0]].setDragging(true);
         }
@@ -184,7 +196,7 @@ export default {
 
       const { name } = this.selectedObject3D.object3d;
 
-      if (this.enableShapeEdit) {
+      if (this.enableShapeEdit || this.enableDrillEdit) {
         if (this.selectedObject3D.object3d.isCoordinate) {
           window.panels[name.split('_')[0]].move(event, position, this.selectedObject3D.object3d, magnetism);
         }
@@ -214,6 +226,11 @@ export default {
       if (this.enableShapeEdit) {
         window.panels[name.split('_')[0]].setDragging(false);
         this.$refs.connections.setConnections().then(() => EventBus.$emit('save'));
+        return;
+      }
+      if (this.enableDrillEdit) {
+        window.panels[name.split('_')[0]].setDragging(false);
+        EventBus.$emit('save');
         return;
       }
 
@@ -269,6 +286,10 @@ export default {
     handleCreatePoint(point) {
       const id = this.selectedObject3D.object3d.name.split('_')[0];
       window.panels[id].createPoint(point);
+    },
+    handleCreateDrill(point) {
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+      window.panels[id].createDrill(point);
     },
     setStoreWatcher() {
       this.panelsMutationWatcher = this.$store.subscribe((mutation) => {

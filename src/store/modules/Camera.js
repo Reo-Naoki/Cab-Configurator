@@ -35,7 +35,7 @@ const mutations = {
     s.enablePan = isEnabled;
   },
   selectObject3D(s, data = null) {
-    s.prevSelectedObject3D = s.selectedObject3D;
+    if (!s.selectedObject3D || !s.selectedObject3D.object3d.isConnectionBubble) s.prevSelectedObject3D = s.selectedObject3D;
     s.selectedObject3D = Object.freeze(data);
   },
   setHoverObject3D(s, data = null) {

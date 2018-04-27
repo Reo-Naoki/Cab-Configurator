@@ -85,10 +85,10 @@ export default {
         this.leftBarElement.style.display = (this.rulerPointStep === 0 && beginPoint.distanceTo(endPoint) > 0) ? 'unset' : 'none';
         this.rightBarElement.style.display = (this.rulerPointStep === 0 && beginPoint.distanceTo(endPoint) > 0) ? 'unset' : 'none';
 
-        const totalDistance = (beginPoint.distanceTo(endPoint) / 10).toFixed(1);
-        const xDistance = Math.abs((beginPoint.z - endPoint.z) / 10).toFixed(1);
-        const yDistance = Math.abs((beginPoint.x - endPoint.x) / 10).toFixed(1);
-        const zDistance = Math.abs((beginPoint.y - endPoint.y) / 10).toFixed(1);
+        const totalDistance = Math.round(beginPoint.distanceTo(endPoint)) / 10;
+        const xDistance = Math.round(Math.abs((beginPoint.z - endPoint.z)) / 10);
+        const yDistance = Math.round(Math.abs((beginPoint.x - endPoint.x)) / 10);
+        const zDistance = Math.round(Math.abs((beginPoint.y - endPoint.y)) / 10);
         this.textElement.innerHTML = `
             <h4 style="margin-bottom: 0px; text-align: center">${totalDistance} mm</h4>
             <div style="border-bottom: 1px solid black; height: 2px" />
@@ -127,8 +127,9 @@ export default {
         this.textElement.style.display = 'none';
         this.leftBarElement.style.display = 'none';
         this.rightBarElement.style.display = 'none';
-        this.textElement.innerHTML = '0';
+        this.textElement.innerHTML = '';
       }
+      this.vglNamespace.renderers[0].inst.domElement.focus();
     },
     addElementsToDOM() {
       const appDiv = document.getElementById('content-3d');
@@ -150,7 +151,13 @@ export default {
     },
     sendMouseEvent(type, event) {
       const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-      const mouseEvent = new MouseEvent(type, event, false);
+      const mouseEvent = new MouseEvent(type, {
+        ...event,
+        view: window,
+        isTrusted: true,
+        bubbles: true,
+        cancelable: true,
+      }, false);
       appDiv.dispatchEvent(mouseEvent);
     },
     onMouseDown(event) {
@@ -167,6 +174,13 @@ export default {
     },
     onMouseWheel(event) {
       this.sendMouseEvent('wheel', event);
+    },
+    onKeyDown(event) {
+      if (event.key === 'Escape') {
+        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
+        const keyboardEvent = new KeyboardEvent('keydown', event, false);
+        appDiv.dispatchEvent(keyboardEvent);
+      }
     },
     changeEventHandler(bool) {
       if (bool) {

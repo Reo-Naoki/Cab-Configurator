@@ -2,14 +2,14 @@
   <div v-if="selectedObject3D">
     <div class="wrapper-name-panel">
       <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
-      <div v-bind:class="[`round-icon-2${enableCreatePoint ? '' : ' medium-emphasis'}`]" @click="createPoint()">
+      <div v-bind:class="[`round-icon-2${enableCreatePoint ? '' : ' medium-emphasis'}`]" @click="createPoint()" title="Create Point">
         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
             width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
             preserveAspectRatio="xMidYMid meet" viewBox="3 1 20 20">
           <path d="M17 15.7V13h2v4l-9 4l-7-7l4-9h4v2H8.3l-2.9 6.6l5 5l6.6-2.9M22 5v2h-3v3h-2V7h-3V5h3V2h2v3h3z" :fill="`${enableCreatePoint ? '#ffffff' : '#aaaaaa'}`"/>
         </svg>
       </div>
-      <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deletePoint() : null" >
+      <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deletePoint() : null" title="Delete Point">
         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
             width="1em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
             preserveAspectRatio="xMidYMid meet" viewBox="2 1 20 20">
@@ -46,6 +46,12 @@ import { mapState } from 'vuex';
 
 export default {
   name: 'ShapeEditor',
+  data() {
+    return {
+      posX: 0,
+      posY: 0,
+    };
+  },
   computed: {
     ...mapState('Panels', [
       'panels',
@@ -54,12 +60,6 @@ export default {
     ...mapState('Camera', [
       'selectedObject3D',
     ]),
-    data() {
-      return {
-        posX: 0,
-        posY: 0,
-      };
-    },
     selectedPointIndex() {
       if (!this.selectedObject3D) return -1;
       if (this.selectedObject3D.object3d.isPanel) return -1;
@@ -73,9 +73,11 @@ export default {
       return true;
     },
     angle() {
-      if (this.selectedPointIndex >= 0) {
-        const points = window.panels[this.selectedObject3D.object3d.name.split('_')[0]].shapePoints;
-        const pointIndex = this.selectedPointIndex;
+      const pointIndex = this.selectedPointIndex;
+      if (pointIndex >= 0) {
+        const id = this.selectedObject3D.object3d.name.split('_')[0];
+
+        const points = window.panels[id].shapePoints;
         const prevIndex = (pointIndex - 1 + points.length) % points.length;
         const nextIndex = (pointIndex + 1) % points.length;
         const prevVect = new Vector2(points[prevIndex][0] - points[pointIndex][0], points[prevIndex][1] - points[pointIndex][1]);
@@ -86,20 +88,22 @@ export default {
     },
     position: {
       get() {
-        if (this.selectedPointIndex >= 0) {
-          const { points } = window.panels[this.selectedObject3D.object3d.name.split('_')[0]];
-          const pointIndex = this.selectedPointIndex;
+        const pointIndex = this.selectedPointIndex;
+        if (pointIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+
+          const { points } = window.panels[id];
           const [x, y] = points[pointIndex];
           return { x, y };
         }
         return { x: 0, y: 0 };
       },
       set({ x, y }) {
-        if (this.selectedPointIndex >= 0) {
+        const pointIndex = this.selectedPointIndex;
+        if (pointIndex >= 0) {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
 
           const { points } = window.panels[id];
-          const pointIndex = this.selectedPointIndex;
           points[pointIndex] = [x, y];
 
           this.calcPlankPosAndSize(id, points);
@@ -116,10 +120,6 @@ export default {
     },
   },
   methods: {
-    modify(key, event) {
-      const { x, y, z } = { ...this.pos, [key]: event.target.value };
-      this.$emit('update:pos', [x, y, z]);
-    },
     applyX(event) {
       if (event.key === 'Enter') {
         this.position = { ...this.position, x: this.posX };
@@ -135,12 +135,14 @@ export default {
     },
     deletePoint() {
       const id = this.selectedObject3D.object3d.name.split('_')[0];
+      const points = window.panels[id].shapePoints.map(point => [point[0], point[1]]);
+      const edges = window.panels[id].edges.split('-');
+      const pointIndex = this.selectedPointIndex;
 
-      const points = Array.from(window.panels[id].shapePoints);
-      const edges = Array.from(window.panels[id].edges.split('-'));
-      points.splice(this.selectedPointIndex, 1);
-      edges.splice(this.selectedPointIndex, 1);
+      points.splice(pointIndex, 1);
+      edges.splice(pointIndex, 1);
       window.panels[id].edges = edges.join('-');
+
       this.$store.commit('Camera/selectObject3D', {
         object3d: {
           ...window.panels[id],

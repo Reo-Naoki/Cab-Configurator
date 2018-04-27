@@ -15,11 +15,12 @@
 <script>
 import { Vector3 } from 'three';
 import { mapState } from 'vuex';
-// import EventBus from '../../../EventBus/EventBus';
+import Coordinate from './Common/Coordinate';
 
 export default {
   name: 'VerticeCoordinate',
   inject: ['vglNamespace'],
+  mixins: [Coordinate],
   props: {
     verticeName: {
       type: String,
@@ -45,17 +46,10 @@ export default {
       type: Array,
       required: true,
     },
-  },
-  mounted() {
-    this.addElementsToDOM();
-    this.setAsverticeCoordinateHelper();
-    this.changeEventHandler(true);
-    this.vglNamespace.beforeRender.push(this.updateStyle);
-    window.mdr = this;
-  },
-  beforeDestroy() {
-    this.changeEventHandler(false);
-    this.removeElements();
+    thick: {
+      type: Number,
+      required: true,
+    },
   },
   created() {
     window.verticeCoordinates[this.verticeName] = this;
@@ -64,7 +58,7 @@ export default {
     return {
       arrowLength: 1000,
       arrowHeadLength: 300,
-      arrowHeadWidth: 200,
+      arrowHeadWidth: this.thick * 10 + 100,
       arrowColor: '#808080',
       magnetRange: 500,
       inputElement: null,
@@ -78,54 +72,48 @@ export default {
       'prevPosition',
       'prevDimension',
     ]),
-    domElement() {
-      return this.vglNamespace.renderers[0].inst.domElement;
-    },
-    cameraInst() {
-      return this.vglNamespace.cameras.camera1;
-    },
     position() {
       return this.stringToVector(this.verticePosition);
     },
     arrows() {
       const prefixName = `${this.verticeName}_coordinate_arrow`;
-      const vertPosition = this.position;
+      const arrowPosition = new Vector3(this.position.x, this.position.y, this.position.z);
 
       return [
         {
           name: `${prefixName}_x`,
           dir: new Vector3(1, 0, 0),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'VDP',
         },
         {
           name: `${prefixName}_y`,
           dir: new Vector3(0, 1, 0),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'FP',
         },
         {
           name: `${prefixName}_z`,
           dir: new Vector3(0, 0, 1),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'VP',
         },
         {
           name: `${prefixName}_-x`,
           dir: new Vector3(-1, 0, 0),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'VDP',
         },
         {
           name: `${prefixName}_-y`,
           dir: new Vector3(0, -1, 0),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'FP',
         },
         {
           name: `${prefixName}_-z`,
           dir: new Vector3(0, 0, -1),
-          position: new Vector3(vertPosition.x, vertPosition.y, vertPosition.z),
+          position: arrowPosition,
           visible: this.plankType !== 'VP',
         },
       ];
@@ -146,36 +134,6 @@ export default {
     vectorToString(position) {
       return `${position.x} ${position.y} ${position.z}`;
     },
-    projectVectorTo2D(x, y, z) {
-      const p = new Vector3(x, y, z);
-      const vector = p.project(this.cameraInst);
-
-      vector.x = (vector.x + 1) / 2 * this.domElement.width;
-      vector.y = -(vector.y - 1) / 2 * this.domElement.height + 30;
-
-      return vector;
-    },
-    select(object3d) {
-      // TODO
-      if (object3d) {
-        this.selectedArrow = object3d.name.split('_').pop();
-      } else {
-        this.selectedArrow = null;
-        this.updateStyle();
-      }
-    },
-    setAsverticeCoordinateHelper() {
-      const { arrows } = this.$refs;
-      if (arrows == null) return;
-      for (let i = 0; i < arrows.length; i += 1) {
-        arrows[i].inst.isCoordinate = true;
-        if (this.isGroupArrow) arrows[i].inst.isGroupArrow = true;
-        for (let ii = 0; ii < arrows[i].inst.children.length; ii += 1) {
-          arrows[i].inst.children[ii].name = arrows[i].inst.name;
-          arrows[i].inst.children[ii].isCoordinate = true;
-        }
-      }
-    },
     move(name, position, vertex, magnetism) {
       // resize: name is the selected arrow name (1-1_dimension_arrow_upper)
       // resize: position is the mouse position while dragging
@@ -190,17 +148,18 @@ export default {
       let distance = 0;
       this.selectedArrow = direction;
       const verticeIndex = Number(this.verticeName.split('SHAPE')[1].split('M')[0]);
-      const points = this.shapePoints;
-      if (direction === 'x' || direction === '-x') {
+      const plankPosition = window.panels[this.verticeName.split('_')[0]].position;
+      const points = this.shapePoints.slice(0);
+      if (direction.includes('x')) {
         distance = position.x - this.prevPosition.x;
-        if (this.plankType === 'FP') points[verticeIndex][1] = (this.prevPosition.x - window.panels[this.verticeName.split('_')[0]].position.x + distance) / 10;
-        if (this.plankType === 'VP') points[verticeIndex][0] = (this.prevPosition.x - window.panels[this.verticeName.split('_')[0]].position.x + distance) / 10;
-      } else if (direction === 'y' || direction === '-y') {
+        if (this.plankType === 'FP') points[verticeIndex][1] = (this.prevPosition.x - plankPosition.x + distance) / 10;
+        if (this.plankType === 'VP') points[verticeIndex][0] = (this.prevPosition.x - plankPosition.x + distance) / 10;
+      } else if (direction.includes('y')) {
         distance = position.y - this.prevPosition.y;
-        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
-      } else if (direction === 'z' || direction === '-z') {
+        points[verticeIndex][1] = (this.prevPosition.y - plankPosition.y + distance) / 10;
+      } else if (direction.includes('z')) {
         distance = position.z - this.prevPosition.z;
-        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z + distance) / 10;
+        points[verticeIndex][0] = (this.prevPosition.z - plankPosition.z + distance) / 10;
       }
 
       this.inputElement.value = distance / 10 * (direction.includes('-') ? -1 : 1);
@@ -208,22 +167,21 @@ export default {
       this.calcPlankPosAndSize(points);
     },
     moveByDistance(direction, distance) {
-      this.selectedArrow = direction;
       const verticeIndex = Number(this.verticeName.split('SHAPE')[1].split('M')[0]);
-      const points = this.shapePoints;
-      if (direction === 'x' || direction === '-x') {
-        // points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
-      } else if (direction === 'y') {
-        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y + distance) / 10;
-      } else if (direction === '-y') {
-        points[verticeIndex][1] = (this.prevPosition.y - window.panels[this.verticeName.split('_')[0]].position.y - distance) / 10;
-      } else if (direction === 'z') {
-        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z + distance) / 10;
-      } else if (direction === '-z') {
-        points[verticeIndex][0] = (this.prevPosition.z - window.panels[this.verticeName.split('_')[0]].position.z - distance) / 10;
+      const plankPosition = window.panels[this.verticeName.split('_')[0]].position;
+      const points = this.shapePoints.slice(0);
+      const sign = direction.includes('-') ? -1 : 1;
+
+      if (direction.includes('x')) {
+        if (this.plankType === 'FP') points[verticeIndex][1] = (this.prevPosition.x - plankPosition.x + distance * sign) / 10;
+        if (this.plankType === 'VP') points[verticeIndex][0] = (this.prevPosition.x - plankPosition.x + distance * sign) / 10;
+      } else if (direction.includes('y')) {
+        points[verticeIndex][1] = (this.prevPosition.y - plankPosition.y + distance * sign) / 10;
+      } else if (direction.includes('z')) {
+        points[verticeIndex][0] = (this.prevPosition.z - plankPosition.z + distance * sign) / 10;
       }
 
-      this.inputElement.value = distance / 10 * (direction.includes('-') ? -1 : 1);
+      this.inputElement.value = distance / 10 * sign;
 
       this.calcPlankPosAndSize(points);
     },
@@ -299,55 +257,6 @@ export default {
       vectorTop2D.y = Math.max(30, Math.min(vectorTop2D.y, rect.height - 50));
       this.inputElement.style.top = `${vectorTop2D.y}px`;
       this.inputElement.style.left = `${vectorTop2D.x}px`;
-    },
-    addElementsToDOM() {
-      const appDiv = document.getElementById('content-3d');
-      const container = document.createElement('div');
-      container.classList.add('coordinate-input-container');
-      this.inputElement = this.createInput();
-      container.appendChild(this.inputElement);
-      this.containerElement = container;
-      appDiv.insertBefore(container, appDiv.firstChild);
-    },
-    removeElements() {
-      const appDiv = document.getElementById('content-3d');
-      appDiv.removeChild(this.containerElement);
-    },
-    onKeyDown(event) {
-      if (event.key === 'Escape') {
-        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const auxclickEvent = new MouseEvent('auxclick', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(auxclickEvent);
-      } else if (event.key === 'Enter') {
-        const { value } = this.inputElement;
-        this.moveByDistance(this.selectedArrow, parseFloat(value) * 10);
-        this.inputElement.value = '0';
-        const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-        const clickEvent = new MouseEvent('click', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-        });
-        appDiv.dispatchEvent(clickEvent);
-      } else {
-        this.onKeyUp();
-      }
-    },
-    onKeyUp() {
-      if (this.inputElement.value.length > 0 && this.inputElement.value !== '-') this.inputElement.value = parseFloat(this.inputElement.value);
-    },
-    changeEventHandler(bool) {
-      if (bool) {
-        this.inputElement.addEventListener('keydown', this.onKeyDown);
-        this.inputElement.addEventListener('keyup', this.onKeyUp);
-      } else {
-        this.inputElement.removeEventListener('keydown', this.onKeyDown);
-        this.inputElement.removeEventListener('keyup', this.onKeyUp);
-      }
     },
   },
 };

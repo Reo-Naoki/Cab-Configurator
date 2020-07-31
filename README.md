@@ -1,3 +1,5 @@
+# Cab-Configurator
+
 ## Project setup
 ```
 npm install

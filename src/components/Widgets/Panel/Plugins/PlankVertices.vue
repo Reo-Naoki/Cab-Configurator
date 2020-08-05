@@ -63,6 +63,14 @@ export default {
       type: Number,
       required: true,
     },
+    works: {
+      type: Array,
+      required: false,
+    },
+    drillPositions: {
+      type: Array,
+      required: false,
+    },
   },
   mounted() {
     EventBus.$on('vertices', this.setVertexVisibility);
@@ -95,22 +103,24 @@ export default {
         plankType,
       } = this;
       const namePrefix = `${plankName}_vertex`;
-      const pointVertice = [];
+      const pointVertices = [];
+      const drillVertices = [];
+
       if (this.plankPoints) {
         this.plankPoints.forEach((point, index) => {
-          pointVertice.push({
+          pointVertices.push({
             side: `SHAPE${index}M`,
             name: `${namePrefix}_SHAPE${index}M`,
             position: this.shapePointPosition(0, point),
             visible: this.showShapeVertice || (`SHAPE${index}M` in showVertices ? showVertices[`SHAPE${index}M`] : false),
           });
-          pointVertice.push({
+          pointVertices.push({
             side: `SHAPE${index}L`,
             name: `${namePrefix}_SHAPE${index}L`,
             position: this.shapePointPosition(-1, point),
             visible: `SHAPE${index}L` in showVertices ? showVertices[`SHAPE${index}L`] : false,
           });
-          pointVertice.push({
+          pointVertices.push({
             side: `SHAPE${index}R`,
             name: `${namePrefix}_SHAPE${index}R`,
             position: this.shapePointPosition(1, point),
@@ -118,8 +128,21 @@ export default {
           });
         });
       }
+
+      if (this.works) {
+        this.works.forEach((work, index) => {
+          drillVertices.push({
+            side: `DRILL${index}C`,
+            name: `${namePrefix}_DRILL${index}C`,
+            position: `${this.drillPositions[index].x} ${this.drillPositions[index].y} ${this.drillPositions[index].z}`,
+            visible: this.showShapeVertice || (`DRILL${index}C` in showVertices ? showVertices[`DRILL${index}C`] : false),
+          });
+        });
+      }
+
       return [
-        ...pointVertice,
+        ...pointVertices,
+        ...drillVertices,
         { // UpperFrontLeft
           side: 'UFL', name: `${namePrefix}_UFL`, position: `${px - width / 2} ${py + height / 2} ${pz + depth / 2}`, visible: 'UFL' in showVertices ? showVertices.UFL : false,
         },

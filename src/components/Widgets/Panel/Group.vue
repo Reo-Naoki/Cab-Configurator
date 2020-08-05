@@ -283,7 +283,7 @@ export default {
     },
     hideConnections() {
       this.rlist.forEach((p) => {
-        if (p.ptype === 'group_stddrawer') {
+        if (p.ptype.startsWith('group_')) {
           window.groups[p.name].hideConnections();
         } else {
           this.$store.dispatch('Panels/hidePanelConnections', { id: p.id.split('-')[0] });

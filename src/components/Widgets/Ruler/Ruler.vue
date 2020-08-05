@@ -28,6 +28,7 @@ export default {
   },
   beforeDestroy() {
     this.changeEventHandler(false);
+    this.vglNamespace.beforeRender.splice(this.vglNamespace.beforeRender.indexOf(this.updateStyle), 1);
     this.removeElements();
   },
   data() {
@@ -151,13 +152,7 @@ export default {
     },
     sendMouseEvent(type, event) {
       const appDiv = this.vglNamespace.renderers[0].inst.domElement;
-      const mouseEvent = new MouseEvent(type, {
-        ...event,
-        view: window,
-        isTrusted: true,
-        bubbles: true,
-        cancelable: true,
-      }, false);
+      const mouseEvent = new MouseEvent(type, event, false);
       appDiv.dispatchEvent(mouseEvent);
     },
     onMouseDown(event) {

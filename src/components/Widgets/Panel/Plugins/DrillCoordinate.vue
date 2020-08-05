@@ -26,8 +26,8 @@ export default {
       type: String,
       required: true,
     },
-    drillPosition: {
-      type: String,
+    drillCenterPosition: {
+      type: Vector3,
       required: true,
     },
     plankPosition: {
@@ -78,78 +78,32 @@ export default {
       'prevDimension',
     ]),
     position() {
-      return this.stringToVector(this.drillPosition);
+      return this.drillCenterPosition;
     },
     arrows() {
       const prefixName = `${this.drillName}_coordinate_arrow`;
-      const arrowPosition = new Vector3(this.position.x, this.position.y, this.position.z);
+      const arrowPosition = this.drillCenterPosition;
       const { work } = this;
-      let offset = work.dp * 5;
       let dir = 'none';
-
-      if (work.wt === 'HT') {
-        if (this.plankType === 'FP') offset = this.plankDimension.height / 2;
-        else if (this.plankType === 'VP') offset = this.plankDimension.depth / 2;
-        else offset = this.plankDimension.width / 2;
-      }
 
       if (this.plankType === 'FP') {
         if (work.wt === 'HH') {
-          if (work.dir.includes('X')) {
-            if (work.dir === 'XM') arrowPosition.add(new Vector3(offset, 0, 0));
-            else arrowPosition.add(new Vector3(-offset, 0, 0));
-            dir = 'X';
-          } else {
-            if (work.dir === 'YM') arrowPosition.add(new Vector3(0, 0, -offset));
-            else arrowPosition.add(new Vector3(0, 0, offset));
-            dir = 'Z';
-          }
-        } else if (work.wt === 'H') {
-          if (work.sd === 1) arrowPosition.add(new Vector3(0, offset, 0));
-          else arrowPosition.add(new Vector3(0, -offset, 0));
-          dir = 'Y';
-        } else if (work.wt === 'HT') {
-          arrowPosition.add(new Vector3(0, offset, 0));
-          dir = 'Y';
-        }
+          if (work.dir.includes('X')) dir = 'X';
+          else dir = 'Z';
+        } else if (work.wt === 'H') dir = 'Y';
+        else if (work.wt === 'HT') dir = 'Y';
       } else if (this.plankType === 'VP') {
         if (work.wt === 'HH') {
-          if (work.dir.includes('X')) {
-            if (work.dir === 'XM') arrowPosition.add(new Vector3(offset, 0, 0));
-            else arrowPosition.add(new Vector3(-offset, 0, 0));
-            dir = 'X';
-          } else {
-            if (work.dir === 'YM') arrowPosition.add(new Vector3(0, offset, 0));
-            else arrowPosition.add(new Vector3(0, -offset, 0));
-            dir = 'Y';
-          }
-        } else if (work.wt === 'H') {
-          if (work.sd === 1) arrowPosition.add(new Vector3(0, 0, -offset));
-          else arrowPosition.add(new Vector3(0, 0, offset));
-          dir = 'Z';
-        } else if (work.wt === 'HT') {
-          arrowPosition.add(new Vector3(0, 0, -offset));
-          dir = 'Z';
-        }
+          if (work.dir.includes('X')) dir = 'X';
+          else dir = 'Y';
+        } else if (work.wt === 'H') dir = 'Z';
+        else if (work.wt === 'HT') dir = 'Z';
       } else if (this.plankType === 'VDP') {
         if (work.wt === 'HH') {
-          if (work.dir.includes('X')) {
-            if (work.dir === 'XM') arrowPosition.add(new Vector3(0, 0, -offset));
-            else arrowPosition.add(new Vector3(0, 0, offset));
-            dir = 'Z';
-          } else {
-            if (work.dir === 'YM') arrowPosition.add(new Vector3(0, offset, 0));
-            else arrowPosition.add(new Vector3(0, -offset, 0));
-            dir = 'Y';
-          }
-        } else if (work.wt === 'H') {
-          if (work.sd === 1) arrowPosition.add(new Vector3(offset, 0, 0));
-          else arrowPosition.add(new Vector3(-offset, 0, 0));
-          dir = 'X';
-        } else if (work.wt === 'HT') {
-          arrowPosition.add(new Vector3(offset, 0, 0));
-          dir = 'X';
-        }
+          if (work.dir.includes('X')) dir = 'Z';
+          else dir = 'Y';
+        } else if (work.wt === 'H') dir = 'X';
+        else if (work.wt === 'HT') dir = 'X';
       }
 
       return [
@@ -277,7 +231,7 @@ export default {
     updateStyle() {
       this.inputElement.style.display = this.selectedArrow ? 'unset' : 'none';
       this.inputElement.value = this.selectedArrow ? this.inputElement.value : '0';
-      const vertPosition = this.stringToVector(this.drillPosition);
+      const vertPosition = this.drillCenterPosition;
 
       if (this.selectedArrow) this.inputElement.focus();
       const inputPosition = new Vector3(

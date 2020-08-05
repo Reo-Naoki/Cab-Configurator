@@ -3,16 +3,14 @@
     <div class="wrapper-name-panel">
       <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
       <div v-bind:class="[`round-icon-2${enableCreatePoint ? '' : ' medium-emphasis'}`]" @click="createPoint()" title="Create Point">
-        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
-            width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-            preserveAspectRatio="xMidYMid meet" viewBox="3 1 20 20">
+        <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+             preserveAspectRatio="xMidYMid meet" viewBox="3 1 20 20">
           <path d="M17 15.7V13h2v4l-9 4l-7-7l4-9h4v2H8.3l-2.9 6.6l5 5l6.6-2.9M22 5v2h-3v3h-2V7h-3V5h3V2h2v3h3z" :fill="`${enableCreatePoint ? '#ffffff' : '#aaaaaa'}`"/>
         </svg>
       </div>
       <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deletePoint() : null" title="Delete Point">
-        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
-            width="1em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-            preserveAspectRatio="xMidYMid meet" viewBox="2 1 20 20">
+        <svg aria-hidden="true" focusable="false" width="1em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+             preserveAspectRatio="xMidYMid meet" viewBox="2 1 20 20">
           <path d="M21.1 15.5L19 17.6l-2.1-2.1l-1.4 1.4l2.1 2.1l-2.1 2.1l1.4 1.4l2.1-2.1l2.1 2.1l1.4-1.4l-2.1-2.1l2.1-2.1l-1.4-1.4M16
                   5v4.6L10.6 15H9.1l-2-6H8V3H2v6h3l2 6H6v6h6v-4.6l5.4-5.4H22V5h-6M6 7H4V5h2v2m4 12H8v-2h2v2M20 9h-2V7h2v2"
                   :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`"/>

@@ -15,7 +15,7 @@
               :rotation="boxRotation"
               :position="`${fixedPosition.x} ${fixedPosition.y} ${fixedPosition.z}`"
               :name="id"
-              :visible="!customGeometry && visible" />
+              :visible="!customGeometry && isPanelVisible" />
 
     <!-- VDPwithPoints(Shape Panel) -->
     <div v-if="customGeometry">
@@ -26,14 +26,14 @@
                 :rotation="shapeSideRotation"
                 :position="leftPanelPosition()"
                 :name="id + '_left_physicalGeometry'"
-                :visible="visible" />
+                :visible="isPanelVisible" />
       <vgl-mesh ref='rightPhysicalGeometry'
                 :geometry="id + '_physicalGeometry'"
                 :material="materials"
                 :rotation="shapeSideRotation"
                 :position="rightPanelPosition()"
                 :name="id + '_right_physicalGeometry'"
-                :visible="visible" />
+                :visible="isPanelVisible" />
       <div v-for="(height, index) in shapeHeights()" :key="`${id}_${index}_physicalGeometry`">
         <vgl-plane-geometry :width="shapeThick()"
                             :height="height"
@@ -44,7 +44,7 @@
                   :rotation="shapeRotations()[index]"
                   :position="shapePositions(index)"
                   :name="`${id}_${index}_physicalGeometry`"
-                  :visible="visible" />
+                  :visible="isPanelVisible" />
         <vgl-geometry :name="`${id}_${index}_outline`"
                       :position-attribute="shapeSegmentLine(index)" />
         <vgl-line-segments :geometry="`${id}_${index}_outline`"
@@ -91,7 +91,7 @@
                 :material="physicalPanelMaterials"
                 :position="`${hdfPhysicalPosition.x} ${hdfPhysicalPosition.y} ${hdfPhysicalPosition.z}`"
                 :name="id + '_physicalGeometry'"
-                :visible="visible" />
+                :visible="isPanelVisible" />
     </vgl-group>
     <!------------->
 
@@ -114,14 +114,14 @@
     </vgl-group>
     <!--------------->
 
-    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" :point-angles="shapePointAngles" :thick="thick"/>
-    <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showStickers"/>
+    <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" :point-angles="shapePointAngles" :thick="thick" :works="drillWorks" :drill-positions="drillCenterPositions" />
+    <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showStickers" />
     <PlankEdges :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector" />
     <PlankCoordinate ref="coordinate" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
     <PlankDimensions ref="dimensions" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
-    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :connections="relatedConnections" v-if="visible"/>
-    <PlankDrill ref="drills" :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :works.sync="drillWorks" />
+    <PlankExcentrique :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :connections="relatedConnections" v-if="visible" />
+    <PlankDrill ref="drills" :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-i-d="id" :works.sync="drillWorks" :drill-positions="drillPositions" :drill-center-positions="drillCenterPositions" />
     <ShapeLines :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-points.sync="shapePoints" v-if="enableShapeEdit && isSelected && shapePoints" />
     <component v-if="pluginComponent" :is="pluginComponent" v-bind="pluginBinding"/>
 
@@ -253,6 +253,7 @@ export default {
       'enableMoving',
       'enableShapeEdit',
       'enableDrillEdit',
+      'drillEditMode',
       'moveDirection',
       'prevPosition',
     ]),
@@ -275,6 +276,14 @@ export default {
         if (selectedObject.name === this.id) return true;
       }
       return false;
+    },
+    isPanelVisible() {
+      if (!this.visible) return false;
+      if (!this.enableDrillEdit) return true;
+      if (this.drillEditMode === 'Normal') return true;
+      if (this.drillEditMode === 'Self Hidden') return !this.isSelected;
+      if (this.drillEditMode === 'Others Hidden') return this.isSelected;
+      return true;
     },
     isParentSelected() {
       if (this.isSelected) return true;
@@ -382,6 +391,132 @@ export default {
     drillWorks: {
       get() { return this.works; },
       set(val) { this.$emit('update:works', val); },
+    },
+    drillPositions() {
+      if (!this.works) return [];
+
+      let { x, y } = this.position;
+      const { width, height, depth } = this.dimensionsByType;
+      const z = this.position.z + depth;
+      const pos = this.works.map(work => {
+        let posX = (work.x || 0) * 10;
+        let posY = (work.y || 0) * 10;
+        let posZ = (work.z || 0) * 10;
+        if (work.wt === 'H') {
+          const sign = this.ptype === 'VP' ? -1 : 1;
+          if (work.sd === 1) posZ += work.dp * 5 * sign;
+          else posZ -= work.dp * 5 * sign;
+        } else if (work.wt === 'HH') {
+          if (work.dir === 'XP') posX += work.dp * 5;
+          else if (work.dir === 'XM') posX -= work.dp * 5;
+          else if (work.dir === 'YP') posY += work.dp * 5;
+          else if (work.dir === 'YM') posY -= work.dp * 5;
+        }
+        return {
+          x: posX,
+          y: posY,
+          z: posZ,
+        };
+      });
+
+      switch (this.ptype) {
+        case 'FP':
+          y += height;
+          return this.works.map((work, index) => {
+            const workX = x + pos[index].x;
+            const workY = work.wt === 'HT' ? y - height / 2 : (y - pos[index].z - (work.sd === 2 ? height : 0));
+            const workZ = z - pos[index].y;
+            return `${workX} ${workY} ${workZ}`;
+          });
+        case 'VP':
+          return this.works.map((work, index) => {
+            const workX = x + pos[index].x;
+            const workY = y + pos[index].y;
+            const workZ = work.wt === 'HT' ? z - depth / 2 : (z - pos[index].z - (work.sd === 1 ? depth : 0));
+            return `${workX} ${workY} ${workZ}`;
+          });
+        case 'VDP':
+          x += width;
+          return this.works.map((work, index) => {
+            const workX = work.wt === 'HT' ? x - width / 2 : (x - pos[index].z - (work.sd === 2 ? width : 0));
+            const workY = y + pos[index].y;
+            const workZ = z - pos[index].x;
+            return `${workX} ${workY} ${workZ}`;
+          });
+        default:
+          return [];
+      }
+    },
+    drillCenterPositions() {
+      const {
+        ptype,
+        dimensionsByType: { width, depth, height },
+      } = this;
+
+      return this.drillPositions.map((position, index) => {
+        const [x, y, z] = position.split(' ').map(v => parseInt(v, 10));
+        const centerPosition = new Vector3(x, y, z);
+        const work = this.works[index];
+        let offset = work.dp * 5;
+
+        if (work.wt === 'HT') {
+          if (ptype === 'FP') offset = height / 2;
+          else if (ptype === 'VP') offset = depth / 2;
+          else offset = width / 2;
+        }
+
+        if (ptype === 'FP') {
+          if (work.wt === 'HH') {
+            if (work.dir.includes('X')) {
+              if (work.dir === 'XM') centerPosition.add(new Vector3(offset, 0, 0));
+              else centerPosition.add(new Vector3(-offset, 0, 0));
+            } else if (work.dir === 'YM') {
+              centerPosition.add(new Vector3(0, 0, -offset));
+            } else {
+              centerPosition.add(new Vector3(0, 0, offset));
+            }
+          } else if (work.wt === 'H') {
+            if (work.sd === 1) centerPosition.add(new Vector3(0, offset, 0));
+            else centerPosition.add(new Vector3(0, -offset, 0));
+          } else if (work.wt === 'HT') {
+            centerPosition.add(new Vector3(0, offset, 0));
+          }
+        } else if (ptype === 'VP') {
+          if (work.wt === 'HH') {
+            if (work.dir.includes('X')) {
+              if (work.dir === 'XM') centerPosition.add(new Vector3(offset, 0, 0));
+              else centerPosition.add(new Vector3(-offset, 0, 0));
+            } else if (work.dir === 'YM') {
+              centerPosition.add(new Vector3(0, offset, 0));
+            } else {
+              centerPosition.add(new Vector3(0, -offset, 0));
+            }
+          } else if (work.wt === 'H') {
+            if (work.sd === 1) centerPosition.add(new Vector3(0, 0, -offset));
+            else centerPosition.add(new Vector3(0, 0, offset));
+          } else if (work.wt === 'HT') {
+            centerPosition.add(new Vector3(0, 0, -offset));
+          }
+        } else if (ptype === 'VDP') {
+          if (work.wt === 'HH') {
+            if (work.dir.includes('X')) {
+              if (work.dir === 'XM') centerPosition.add(new Vector3(0, 0, -offset));
+              else centerPosition.add(new Vector3(0, 0, offset));
+            } else if (work.dir === 'YM') {
+              centerPosition.add(new Vector3(0, offset, 0));
+            } else {
+              centerPosition.add(new Vector3(0, -offset, 0));
+            }
+          } else if (work.wt === 'H') {
+            if (work.sd === 1) centerPosition.add(new Vector3(offset, 0, 0));
+            else centerPosition.add(new Vector3(-offset, 0, 0));
+          } else if (work.wt === 'HT') {
+            centerPosition.add(new Vector3(offset, 0, 0));
+          }
+        }
+
+        return centerPosition;
+      });
     },
     boundingBox() {
       const { x, y, z } = this.fixedPosition;

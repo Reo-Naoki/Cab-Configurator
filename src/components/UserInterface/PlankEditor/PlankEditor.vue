@@ -104,7 +104,7 @@ export default {
     deleteGroup(name) {
       let lastGroup = true;
       window.groups[name].rlist.forEach((list) => {
-        if (list.ptype === 'group_stddrawer') {
+        if (list.ptype.startsWith('group_')) {
           this.deleteGroup(list.name);
           lastGroup = false;
         } else this.$store.dispatch('Panels/deletePanel', { id: list.id.split('-')[0] });

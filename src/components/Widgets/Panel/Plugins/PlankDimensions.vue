@@ -57,6 +57,7 @@ export default {
   },
   beforeDestroy() {
     this.changeEventHandler(false);
+    this.vglNamespace.beforeRender.splice(this.vglNamespace.beforeRender.indexOf(this.updateStyle), 1);
     this.removeElements();
   },
   data() {

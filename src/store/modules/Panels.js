@@ -19,6 +19,7 @@ const state = {
   enableShapeEdit: false,
   enableCreatePoint: false,
   enableDrillEdit: false,
+  drillEditMode: 'Normal',
   enableCreateDrill: false,
   enableLayerManager: false,
   rulerStartPoint: new Vector3(0, 0, 0),
@@ -28,6 +29,12 @@ const state = {
   price: '---',
   prevPosition: null,
   prevDimension: null,
+  hDiameters: [3, 4, 5, 8, 15, 35],
+  hhDiameters: [5, 8],
+  htDiameters: [4, 5, 8],
+  hDiFreeRange: [16, 50],
+  htDiFreeRange: [16, 300],
+  hhDpMax: 35,
 };
 
 function initEnableState() {
@@ -37,6 +44,7 @@ function initEnableState() {
   state.enableShapeEdit = false;
   state.enableCreatePoint = false;
   state.enableDrillEdit = false;
+  state.drillEditMode = 'Normal';
   state.enableCreateDrill = false;
   state.enableLayerManager = false;
 }
@@ -85,6 +93,7 @@ const getters = {
       };
 
       if (panel.layer !== 'Structure') newPanel.layer = panel.layer;
+      if (panel.works.length > 0) newPanel.works = panel.works;
       if (points) {
         if (points.length !== 4) {
           newPanel.points = points;
@@ -102,7 +111,7 @@ const getters = {
 
       return newPanel;
     });
-    groups.forEach(group => newPanels.push(group));
+    groups.forEach(group => newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => panel.id === list.id)) }));
 
     const { materials } = rootState.materials;
     return {
@@ -121,7 +130,7 @@ const mutations = {
     s.panels = [];
     s.groups = [];
     panels.forEach((p) => {
-      if (p.ptype !== 'group_stddrawer') {
+      if (!p.ptype.startsWith('group_')) {
         const resizable = !p.ptype.includes('Hard');
         const points = p.points ? p.points.map(point => [Math.round(point[0] * 10) / 10, Math.round(point[1] * 10) / 10]) : null;
 
@@ -131,23 +140,24 @@ const mutations = {
           ptype: resizable ? p.ptype : p.ptype.split('-')[1],
           id: p.id.split('-')[0],
           material: p.material.toString(),
+          works: p.works || [],
           layer: p.layer ? p.layer : 'Structure',
           resizable,
         });
       }
     });
     panels.forEach((p) => {
-      if (p.ptype === 'group_stddrawer') {
+      if (p.ptype.startsWith('group_')) {
         s.groups.push({ ...p, resizable: true });
       }
     });
     panels.forEach((p) => {
-      if (p.ptype === 'group_stddrawer') {
+      if (p.ptype.startsWith('group_')) {
         let groupChildCount = 0;
         let panelChildCount = 0;
 
         p.rlist.forEach((list) => {
-          if (list.ptype === 'group_stddrawer') {
+          if (list.ptype.startsWith('group_')) {
             const groupIndex = s.groups.findIndex(group => group.name === list.name);
             s.groups[groupIndex].groupName = p.name;
             s.groups[groupIndex].groupType = p.ptype;
@@ -173,6 +183,7 @@ const mutations = {
       points: [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]],
       id: p.id.split('-')[0],
       material: p.material.toString(),
+      works: [],
       layer: 'Structure',
       resizable: true,
     });
@@ -261,6 +272,11 @@ const mutations = {
   enableDrillEdit(s, isEnable = true) {
     initEnableState();
     s.enableDrillEdit = isEnable;
+  },
+  changeDrillEditMode(s) {
+    if (s.drillEditMode === 'Normal') s.drillEditMode = 'Self Hidden';
+    else if (s.drillEditMode === 'Self Hidden') s.drillEditMode = 'Others Hidden';
+    else s.drillEditMode = 'Normal';
   },
   enableCreateDrill(s, isEnable = true) {
     s.enableCreateDrill = isEnable;
@@ -396,7 +412,7 @@ const actions = {
     return new Promise(async (resolve) => {
       // use on importing new cabinet
       const serializedData = context.getters.serialize;
-      const panelIDs = serializedData.rlist.filter(list => list.ptype !== 'group_stddrawer').map(list => Number(list.id));
+      const panelIDs = serializedData.rlist.filter(list => !list.ptype.startsWith('group_')).map(list => Number(list.id));
       const materialIDs = serializedData.materials.map(material => Number(material.id));
       const newStartPID = Math.max(...panelIDs) + 1;
       const newStartMID = Math.max(...materialIDs) + 1;
@@ -423,7 +439,7 @@ const actions = {
 
       // Create group name table
       newRlist.forEach((list) => {
-        if (list.ptype === 'group_stddrawer') {
+        if (list.ptype.startsWith('group_')) {
           const { name } = list;
           newNameTable[name] = name;
           list.rlist.filter(p => p.id).forEach(p => groupedPanels.push(p));
@@ -443,11 +459,11 @@ const actions = {
       // Process creating new group data for an existing cabinet
       newGroup = {};
       newGroup.name = newGroupName;
-      newGroup.ptype = 'group_stddrawer';
+      newGroup.ptype = 'group_new';
       newGroup.rlist = [];
       isValid = false;
       newRlist.forEach((list) => {
-        if (list.ptype === 'group_stddrawer') {
+        if (list.ptype.startsWith('group_')) {
           if (!list.groupName) newGroup.rlist.push({ name: list.name, ptype: list.ptype });
         } else if (!groupedPanels.find(panel => panel.id.split('-')[0] === list.id.split('-')[0])) {
           newGroup.rlist.push(list);
@@ -465,7 +481,7 @@ const actions = {
       // Get groupedPanels of an imported cabinet
       groupedPanels = [];
       rlist.forEach((list) => {
-        if (list.ptype === 'group_stddrawer') {
+        if (list.ptype.startsWith('group_')) {
           list.rlist.filter(p => p.id).forEach(p => groupedPanels.push(p));
         }
       });
@@ -483,11 +499,11 @@ const actions = {
       // Process creating new group data for an imported cabinet
       newGroup = {};
       newGroup.name = newGroupName;
-      newGroup.ptype = 'group_stddrawer';
+      newGroup.ptype = 'group_new';
       newGroup.rlist = [];
       isValid = false;
       rlist.forEach((list) => {
-        if (list.ptype === 'group_stddrawer') {
+        if (list.ptype.startsWith('group_')) {
           newGroup.rlist.push({ name: list.name, ptype: list.ptype });
         } else if (!groupedPanels.find(panel => panel.id.split('-')[0] === list.id.split('-')[0])) {
           newGroup.rlist.push(list);
@@ -498,7 +514,7 @@ const actions = {
 
       // Process Panels of imported cabinet
       rlist.forEach((p) => {
-        if (p.ptype !== 'group_stddrawer') {
+        if (!p.ptype.startsWith('group_')) {
           newRlist.push({
             ...p,
             id: (Number(p.id.split('-')[0]) + newStartPID).toString(),
@@ -509,7 +525,7 @@ const actions = {
       });
       // Process Renaming groups of imported cabinet
       rlist.forEach((p) => {
-        if (p.ptype === 'group_stddrawer') {
+        if (p.ptype.startsWith('group_')) {
           const { name } = p;
           const nameIDs = Object.values(newNameTable).map((value) => {
             const id = Number(value.split(name)[1]);
@@ -522,12 +538,12 @@ const actions = {
       });
       // Process Groups of imported cabinet
       rlist.forEach((p) => {
-        if (p.ptype === 'group_stddrawer') {
+        if (p.ptype.startsWith('group_')) {
           newRlist.push({
             ...p,
             name: newNameTable[p.name],
             rlist: p.rlist.map((groupP) => {
-              if (groupP.ptype === 'group_stddrawer') {
+              if (groupP.ptype.startsWith('group_')) {
                 return {
                   ...groupP,
                   name: newNameTable[groupP.name],

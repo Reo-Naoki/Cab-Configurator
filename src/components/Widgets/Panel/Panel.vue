@@ -48,9 +48,6 @@ export default {
     ...mapState('Panels', [
       'connections',
     ]),
-    ...mapState('Camera', [
-      'selectedObject3D',
-    ]),
     relatedConnections() {
       return this.connections.filter(c => c.containsPanel(this.id));
     },

@@ -1,8 +1,7 @@
 <template>
   <el-button class="toolbar-button" @click="measureDistance()" :style="`${enableMeasure ? 'backgroundColor:lightgray' : ''}`" title="Ruler" >
-    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false"
-        width="1.7em" height="1.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-        preserveAspectRatio="xMidYMid meet" viewBox="0 0 64 64">
+    <svg aria-hidden="true" focusable="false" width="1.7em" height="1.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+         preserveAspectRatio="xMidYMid meet" viewBox="0 0 64 64">
       <path d="M60.905 48.851L15.148 3.094C14.443 2.389 13.503 2 12.5 2s-1.942.389-2.649 1.094L3.095 9.85A3.72 3.72 0 0 0 2 12.499c0
               1.004.389 1.943 1.095 2.648L48.85 60.906c.705.705 1.646 1.094 2.649 1.094s1.944-.389 2.648-1.094l6.759-6.759a3.75 3.75
               0 0 0-.001-5.296m-1.285 4.012l-6.758 6.758c-.723.723-2.005.723-2.728 0L4.379

@@ -368,8 +368,7 @@ export default {
           } else if (this.enableCreateDrill) {
             this.$store.commit('Panels/enableCreateDrill', false);
           } else {
-            this.$store.commit('Panels/enableShapeEdit', false);
-            this.$store.commit('Panels/enableDrillEdit', false);
+            this.$emit('dragcancel');
             this.$emit('hoveroff');
           }
           this.domElement.style.cursor = 'auto';

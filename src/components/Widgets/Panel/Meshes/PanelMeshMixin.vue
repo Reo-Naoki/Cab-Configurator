@@ -283,6 +283,7 @@ export default {
       if (this.drillEditMode === 'Normal') return true;
       if (this.drillEditMode === 'Self Hidden') return !this.isSelected;
       if (this.drillEditMode === 'Others Hidden') return this.isSelected;
+      if (this.drillEditMode === 'All Hidden') return false;
       return true;
     },
     isParentSelected() {
@@ -402,15 +403,16 @@ export default {
         let posX = (work.x || 0) * 10;
         let posY = (work.y || 0) * 10;
         let posZ = (work.z || 0) * 10;
+        const posOffset = work.di ? work.dp * 5 : -3;
         if (work.wt === 'H') {
           const sign = this.ptype === 'VP' ? -1 : 1;
-          if (work.sd === 1) posZ += work.dp * 5 * sign;
-          else posZ -= work.dp * 5 * sign;
+          if (work.sd === 1) posZ += posOffset * sign;
+          else posZ -= posOffset * sign;
         } else if (work.wt === 'HH') {
-          if (work.dir === 'XP') posX += work.dp * 5;
-          else if (work.dir === 'XM') posX -= work.dp * 5;
-          else if (work.dir === 'YP') posY += work.dp * 5;
-          else if (work.dir === 'YM') posY -= work.dp * 5;
+          if (work.dir === 'XP') posX += posOffset;
+          else if (work.dir === 'XM') posX -= posOffset;
+          else if (work.dir === 'YP') posY += posOffset;
+          else if (work.dir === 'YM') posY -= posOffset;
         }
         return {
           x: posX,
@@ -424,7 +426,7 @@ export default {
           y += height;
           return this.works.map((work, index) => {
             const workX = x + pos[index].x;
-            const workY = work.wt === 'HT' ? y - height / 2 : (y - pos[index].z - (work.sd === 2 ? height : 0));
+            const workY = work.wt === 'HT' ? y - (work.di ? height / 2 : -3) : (y - pos[index].z - (work.sd === 2 ? height : 0));
             const workZ = z - pos[index].y;
             return `${workX} ${workY} ${workZ}`;
           });
@@ -432,13 +434,13 @@ export default {
           return this.works.map((work, index) => {
             const workX = x + pos[index].x;
             const workY = y + pos[index].y;
-            const workZ = work.wt === 'HT' ? z - depth / 2 : (z - pos[index].z - (work.sd === 1 ? depth : 0));
+            const workZ = work.wt === 'HT' ? z - (work.di ? depth / 2 : -3) : (z - pos[index].z - (work.sd === 1 ? depth : 0));
             return `${workX} ${workY} ${workZ}`;
           });
         case 'VDP':
           x += width;
           return this.works.map((work, index) => {
-            const workX = work.wt === 'HT' ? x - width / 2 : (x - pos[index].z - (work.sd === 2 ? width : 0));
+            const workX = work.wt === 'HT' ? x - (work.di ? width / 2 : -3) : (x - pos[index].z - (work.sd === 2 ? width : 0));
             const workY = y + pos[index].y;
             const workZ = z - pos[index].x;
             return `${workX} ${workY} ${workZ}`;
@@ -464,6 +466,8 @@ export default {
           else if (ptype === 'VP') offset = depth / 2;
           else offset = width / 2;
         }
+
+        if (!work.di) offset = 0;
 
         if (ptype === 'FP') {
           if (work.wt === 'HH') {

@@ -3,20 +3,19 @@
     <div class="wrapper-name-panel">
       <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
       <div v-bind:class="['round-icon-2 medium-emphasis']" @click="changeMode()" :title="`${drillEditMode} Mode`">
-        <svg aria-hidden="true" focusable="false" width="1.2em" height="1.2em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-             preserveAspectRatio="xMidYMid meet" viewBox="-30 -80 1150 1124">
-            <path v-if="drillEditMode === 'Normal'"
-                  d="M896.428 1024h-512q-53 0-90.5-37.5t-37.5-90.5V768h-128q-53 0-90.5-37.5T.428 640V128q0-53 37.5-90.5t90.5-37.5h512q53
-                     0 90.5 37.5t37.5 90.5v128h128q53 0 90.5 37.5t37.5 90.5v512q0 53-37.5 90.5t-90.5 37.5z" fill="#aaaaaa" />
-            <path v-else-if="drillEditMode === 'Self Hidden'"
-                  d="M896.428 1024h-512q-53 0-90.5-37.5t-37.5-90.5V768h-128q-53 0-90.5-37.5T.428 640V128q0-53 37.5-90.5t90.5-37.5h512q53
-                     0 90.5 37.5t37.5 90.5v128h128q53 0 90.5 37.5t37.5 90.5v512q0 53-37.5 90.5t-90.5 37.5zm0-608q0-13-9.5-22.5t-22.5-9.5h-448q-13
-                     0-22.5 9.5t-9.5 22.5v448q0 13 9.5 22.5t22.5 9.5h448q13 0 22.5-9.5t9.5-22.5V416z" fill="#aaaaaa" />
-            <path v-else-if="drillEditMode === 'Others Hidden'"
-                  d="M896.428 1024h-512q-53 0-90.5-37.5t-37.5-90.5V768h-128q-53 0-90.5-37.5T.428 640V128q0-53 37.5-90.5t90.5-37.5h512q53
-                     0 90.5 37.5t37.5 90.5v128h128q53 0 90.5 37.5t37.5 90.5v512q0 53-37.5 90.5t-90.5 37.5zm-256-864q0-13-9.5-22.5t-22.5-9.5h-448q-13
-                     0-22.5 9.5t-9.5 22.5v448q0 13 9.5 22.5t22.5 9.5h96V384q0-53 37.5-90.5t90.5-37.5h256v-96zm256 256q0-13-9.5-22.5t-22.5-9.5h-96v256q0
-                     53-37.5 90.5t-90.5 37.5h-256v96q0 13 9.5 22.5t22.5 9.5h448q13 0 22.5-9.5t9.5-22.5V416z" fill="#aaaaaa" />
+        <svg aria-hidden="true" focusable="false" width="1.5em" height="1.5em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+             preserveAspectRatio="xMidYMid meet" viewBox="1 1 24 24">
+          <path v-if="drillEditMode === 'Normal'" d="M14 3H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" fill="#aaaaaa"/>
+          <path v-if="drillEditMode === 'Normal'" d="M21 19v-9a2 2 0 0 0-2-2h-1v8a2 2 0 0 1-2 2H8v1a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z" fill="#aaaaaa"/>
+          <path v-else-if="drillEditMode === 'Self Hidden'"
+                d="M5 16h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103 0-2 .897-2
+                2v9c0 1.103.897 2 2 2zm13.997 3H10v-9h9l-.003 9z" fill="#aaaaaa"/>
+          <path v-else-if="drillEditMode === 'Others Hidden'"
+                d="M14 3H5c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2 2h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897
+                2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2zM5 5h9l-.003 9H5V5z" fill="#aaaaaa"/>
+          <path v-else-if="drillEditMode === 'All Hidden'"
+                d="M5 16h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2
+                2zm9.001-2L14 10h.001v4zM19 10l.001 9H10v-3h4c1.103 0 2-.897 2-2v-4h3zM5 5h9v3h-4c-1.103 0-2 .897-2 2v4H5V5z" fill="#aaaaaa"/>
         </svg>
       </div>
       <div v-bind:class="[`round-icon-2${enableCreateDrill ? '' : ' medium-emphasis'}`]" @click="createDrill()" title="Create Drill">
@@ -29,10 +28,10 @@
       <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deleteDrill() : null" title="Delete Drill">
         <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
              preserveAspectRatio="xMidYMid meet" viewBox="2 2 20 20">
-            <path d="m16.981,7.0673l0.0119,5.92826l2,0l0,-7.98119l-16,0l0,15.96237l8,0l0,-1.9953l-6,0l0,-11.97177" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
-            <circle cx="11" cy="13" r="3" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
-            <path d="m19.44341,20.18835l3,0l0,-1.99529l-3,0l0,-2.99295l-2,0l0,2.99295l-3,0l0,1.99529l3,0l0,2.99295l2,0l0,-2.99295m-8,0"
-                  transform="rotate(45 16.94340896606446,19.190700531005856) " :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
+          <path d="m16.981,7.0673l0.0119,5.92826l2,0l0,-7.98119l-16,0l0,15.96237l8,0l0,-1.9953l-6,0l0,-11.97177" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
+          <circle cx="11" cy="13" r="3" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
+          <path d="m19.44341,20.18835l3,0l0,-1.99529l-3,0l0,-2.99295l-2,0l0,2.99295l-3,0l0,1.99529l3,0l0,2.99295l2,0l0,-2.99295m-8,0"
+                transform="rotate(45 16.94340896606446,19.190700531005856) " :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
         </svg>
       </div>
     </div>
@@ -41,31 +40,42 @@
       <div class="content-menu-left">
         <div class="wrapper-position">
           <label class="inline-block normal attribute">Position:</label>
-          <label v-if="isPositionVisible.x" class="inline-block normal">X:</label>
-          <input v-if="isPositionVisible.x" class="dimension-box position w-input" v-model.number="x" @keydown="applyX"/>
-          <label v-if="isPositionVisible.y" class="inline-block normal">Y:</label>
-          <input v-if="isPositionVisible.y" class="dimension-box position w-input" v-model.number="y" @keydown="applyY"/>
-          <label v-if="isPositionVisible.z" class="inline-block normal">Z:</label>
-          <input v-if="isPositionVisible.z" class="dimension-box position w-input" v-model.number="z" @keydown="applyZ"/>
+          <div class="wrapper-position">
+            <label v-if="isPositionVisible.x" class="inline-block normal label">X:</label>
+            <input v-if="isPositionVisible.x" class="dimension-box position w-input" v-model.number="x" @keydown="applyX"/>
+            <label v-if="isPositionVisible.y" class="inline-block normal label">Y:</label>
+            <input v-if="isPositionVisible.y" class="dimension-box position w-input" v-model.number="y" @keydown="applyY"/>
+            <label v-if="isPositionVisible.z" class="inline-block normal label">Z:</label>
+            <input v-if="isPositionVisible.z" class="dimension-box position w-input" v-model.number="z" @keydown="applyZ"/>
+          </div>
         </div>
-        <div class="wrapper-position">
+        <div v-if="di > 0" class="wrapper-position">
           <label class="inline-block normal attribute">Diameter:</label>
           <div class="diameter">
-            <select class="dimension-select w-select diameter-select" v-model="di">
+            <select class="dimension-select w-select diameter-select" v-model.number="di">
               <option v-for="(diameter, index) in diameterList" :key="`list${index}`" :value="diameter">{{diameter}} mm</option>
             </select>
-            <input class="diameter-input" type="text" name="format" v-model.number="di" />
+            <input class="diameter-input" type="text" name="format" v-model.number="inputDI" @keydown="applyDI" :readonly="!this[`${wt.toLowerCase()}DiFreeRange`]" />
+          </div>
+        </div>
+        <div v-else class="wrapper-position">
+          <label class="inline-block normal attribute">Size:</label>
+          <div class="wrapper-position">
+            <label class="inline-block normal label">SX:</label>
+            <input class="dimension-box position w-input" v-model.number="sx" @keydown="applySX"/>
+            <label class="inline-block normal label">SY:</label>
+            <input class="dimension-box position w-input" v-model.number="sy" @keydown="applySY"/>
           </div>
         </div>
         <div v-if="isDepthVisible" class="wrapper-position">
           <label class="inline-block normal attribute">Depth:</label>
-          <input class="dimension-box position w-input" v-model.number="dp"/>
+          <input class="dimension-box position w-input" v-model.number="dp" @keydown="applyDP"/>
         </div>
         <div class="wrapper-position">
           <label class="inline-block normal attribute">Type:</label>
           <select class="dimension-select w-select" v-model="wt">
             <option :value="'H'">H</option>
-            <option :value="'HH'">HH</option>
+            <option v-if="di > 0" :value="'HH'">HH</option>
             <option :value="'HT'">HT</option>
           </select>
         </div>
@@ -85,6 +95,20 @@
             <option :value="'YM'">YM</option>
           </select>
         </div>
+        <div v-if="wt !== 'HH'" class="flexbox-menu-left">
+          <div :class="{ 'children-orientation' : true, selected: di > 0}" @click="changeDrillShape('round')">
+            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 16 16">
+              <g fill="#626262"><circle cx="8" cy="8" r="8"/></g>
+            </svg>
+          </div>
+          <div :class="{ 'children-orientation' : true, selected: di === 0}" @click="changeDrillShape('rect')">
+            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+              <rect width="24" height="24" x="0" y="0" class="uim-primary" rx="5" fill="#626262"/>
+            </svg>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -100,6 +124,10 @@ export default {
       posX: 0,
       posY: 0,
       posZ: 0,
+      sizeX: 0,
+      sizeY: 0,
+      drillDepth: 0,
+      drillDI: 0,
     };
   },
   computed: {
@@ -112,6 +140,7 @@ export default {
       'htDiameters',
       'hDiFreeRange',
       'htDiFreeRange',
+      'hhDiFreeRange',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
@@ -139,15 +168,8 @@ export default {
       };
     },
     diameterList() {
-      const drillIndex = this.selectedDrillIndex;
-      if (drillIndex === -1) return this.hDiameters;
-
-      const id = this.selectedObject3D.object3d.name.split('_')[0];
-      const work = window.panels[id].works[drillIndex];
-
-      if (work.wt === 'HH') return this.hhDiameters;
-      if (work.wt === 'HT') return this.htDiameters;
-      return this.hDiameters;
+      if (this[`${this.wt.toLowerCase()}Diameters`].includes(this.di)) return this[`${this.wt.toLowerCase()}Diameters`];
+      return [...this[`${this.wt.toLowerCase()}Diameters`], this.di];
     },
     isDepthVisible() {
       const drillIndex = this.selectedDrillIndex;
@@ -215,7 +237,7 @@ export default {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
           return window.panels[id].works[drillIndex].di;
         }
-        return 5;
+        return this[`${this.wt.toLowerCase()}Diameters`][0];
       },
       set(val) {
         const drillIndex = this.selectedDrillIndex;
@@ -223,10 +245,36 @@ export default {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
           const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
 
-          works[drillIndex].di = val;
+          works[drillIndex].di = Math.max(1, parseFloat(val) || 1);
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
         }
       },
+    },
+    inputDI: {
+      get() { return this.di; },
+      set(val) { this.drillDI = val; },
+    },
+    sx: {
+      get() {
+        const drillIndex = this.selectedDrillIndex;
+        if (drillIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+          return window.panels[id].works[drillIndex].sx;
+        }
+        return 0;
+      },
+      set(val) { this.sizeX = parseFloat(val) || 15; },
+    },
+    sy: {
+      get() {
+        const drillIndex = this.selectedDrillIndex;
+        if (drillIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+          return window.panels[id].works[drillIndex].sy;
+        }
+        return 0;
+      },
+      set(val) { this.sizeY = parseFloat(val) || 15; },
     },
     dp: {
       get() {
@@ -237,17 +285,7 @@ export default {
         }
         return 0;
       },
-      set(val) {
-        const drillIndex = this.selectedDrillIndex;
-        if (drillIndex >= 0) {
-          const id = this.selectedObject3D.object3d.name.split('_')[0];
-          const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
-
-          if (works[drillIndex].wt === 'H') works[drillIndex].dp = Math.max(2, Math.min(window.panels[id].thick - 2, val));
-          else works[drillIndex].dp = val;
-          window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
-        }
-      },
+      set(val) { this.drillDepth = parseFloat(val) || 0; },
     },
     wt: {
       get() {
@@ -300,9 +338,11 @@ export default {
             dir = null;
           }
 
-          if (val === 'H' && !this.hDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.hDiameters;
-          else if (val === 'HH' && !this.hhDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.hhDiameters;
-          else if (val === 'HT' && !this.htDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.htDiameters;
+          if (works[drillIndex].di) {
+            if (val === 'H' && !this.hDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.hDiameters;
+            else if (val === 'HH' && !this.hhDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.hhDiameters;
+            else if (val === 'HT' && !this.htDiameters.includes(works[drillIndex].di)) [works[drillIndex].di] = this.htDiameters;
+          }
 
           works[drillIndex].z = 0;
           works[drillIndex].dir = dir;
@@ -326,8 +366,7 @@ export default {
         const drillIndex = this.selectedDrillIndex;
         if (drillIndex >= 0) {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
-          const panel = window.panels[id];
-          const works = panel.works.slice(0).map(work => ({ ...work }));
+          const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
 
           works[drillIndex].sd = val;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
@@ -369,6 +408,69 @@ export default {
     applyZ(event) {
       if (event.key === 'Enter') {
         this.position = { ...this.position, z: this.posZ };
+      }
+    },
+    applySX(event) {
+      if (event.key === 'Enter') {
+        const drillIndex = this.selectedDrillIndex;
+        if (drillIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+          const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
+
+          works[drillIndex].sx = this.sizeX;
+          window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+        }
+      }
+    },
+    applySY(event) {
+      if (event.key === 'Enter') {
+        const drillIndex = this.selectedDrillIndex;
+        if (drillIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+          const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
+
+          works[drillIndex].sy = this.sizeY;
+          window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+        }
+      }
+    },
+    applyDP(event) {
+      if (event.key === 'Enter') {
+        const drillIndex = this.selectedDrillIndex;
+        if (drillIndex >= 0) {
+          const id = this.selectedObject3D.object3d.name.split('_')[0];
+          const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
+
+          if (works[drillIndex].wt === 'H') works[drillIndex].dp = Math.max(2, Math.min(window.panels[id].thick - 2, this.drillDepth));
+          else works[drillIndex].dp = this.drillDepth;
+          window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+        }
+      }
+    },
+    applyDI(event) {
+      if (event.key === 'Enter') { this.di = this.drillDI; }
+    },
+    changeDrillShape(type) {
+      const drillIndex = this.selectedDrillIndex;
+      if (drillIndex >= 0) {
+        const id = this.selectedObject3D.object3d.name.split('_')[0];
+        const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
+
+        if (type === 'round') {
+          if (works[drillIndex].di === 0) {
+            works[drillIndex].di = Math.min(works[drillIndex].sx, works[drillIndex].sy);
+            works[drillIndex].sx = 0;
+            works[drillIndex].sy = 0;
+          }
+        } else if (type === 'rect') {
+          if (works[drillIndex].di > 0) {
+            works[drillIndex].sx = works[drillIndex].di;
+            works[drillIndex].sy = works[drillIndex].di;
+            works[drillIndex].di = 0;
+          }
+        }
+
+        window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
       }
     },
     createDrill() {
@@ -445,6 +547,11 @@ export default {
 <style scoped>
   input {
     width: 100% !important;
+    margin-left: 0px;
+    margin-right: 0px;
+  }
+  .label {
+    margin-left: 5px;
   }
   .attribute {
     font-size: 16px;

@@ -33,7 +33,7 @@ module.exports = {
         changeOrigin: true,
         ws: true,
         logLevel: 'debug',
-      },*/
+      }, */
     },
   },
   pluginOptions: {

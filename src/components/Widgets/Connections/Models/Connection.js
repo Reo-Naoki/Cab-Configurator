@@ -101,6 +101,9 @@ export default class {
 
   get serialize() {
     const { ...serialize } = this;
+    delete serialize.isHidden;
+    delete serialize.center;
+    delete serialize.ilength;
     return serialize;
   }
 

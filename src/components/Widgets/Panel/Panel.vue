@@ -188,7 +188,12 @@ export default {
     },
     syncHandler(key, data) {
       // update key of panel
-      this.$store.commit('Panels/setPanelData', { index: this.index, key, data });
+      this.$store.commit('Panels/setPanelData', {
+        index: this.index,
+        key,
+        data,
+        noSave: true,
+      });
     },
   },
 };

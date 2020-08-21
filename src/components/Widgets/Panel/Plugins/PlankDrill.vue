@@ -1,12 +1,19 @@
 <template>
   <div>
     <div v-for="(work, index) in works" :key="`${plankID}_drill_key_${index}`">
-      <vgl-cylinder-geometry :name="`${plankID}_drill_${index}_geometry`" v-bind="drillDimensions[index]"/>
+      <vgl-cylinder-geometry v-if="work.di" :name="`${plankID}_drill_${index}_geometry`" v-bind="drillDimensions[index]" />
+      <vgl-extrude-geometry v-if="!work.di"
+                :name="`${plankID}_drill_${index}_geometry`"
+                :shapes="drillShapes[index]"
+                :depth="drillDepths[index]"
+                :bevelEnabled="false"
+                :curveSegments="1"
+                :steps="8" />
       <vgl-mesh :geometry="`${plankID}_drill_${index}_geometry`"
                 ref="drills"
                 material="drill"
                 :position="drillPositions[index]"
-                :rotation="drillRotations[index]"
+                :rotation="work.di ? drillRotations[index] : drillShapeRotations[index]"
                 :name="`${plankID}_drill_${index}`" />
       <DrillCoordinate v-if="showCoordinateArrows(`${plankID}_drill_${index}`)"
         :drill-name="`${plankID}_drill_${index}`"
@@ -32,7 +39,7 @@
 </template>
 
 <script>
-import { Vector3 } from 'three';
+import { Vector2, Vector3 } from 'three';
 import { mapState } from 'vuex';
 import DrillCoordinate from './DrillCoordinate';
 import EventBus from '../../../EventBus/EventBus';
@@ -157,7 +164,7 @@ export default {
           });
         case 'VDP':
           return this.works.map(work => {
-            if (work.wt === 'H' || work.wt === 'HT') return `${0} ${0} ${rightAngle}`;
+            if (work.wt === 'H' || work.wt === 'HT') return `${rightAngle} ${0} ${rightAngle}`;
             if (work.wt === 'HH') {
               if (work.dir.includes('X')) return `${rightAngle} ${0} ${0}`;
               if (work.dir.includes('Y')) return `${0} ${0} ${0}`;
@@ -178,12 +185,66 @@ export default {
       if (plankType === 'VP') thick = depth;
       if (plankType === 'VDP') thick = width;
 
-      return this.works.map(work => ({
-        radiusTop: work.di * 5,
-        radiusBottom: work.di * 5,
-        height: work.wt === 'HT' ? thick + 6 : work.dp * 10 + 3,
-        radialSegments: this.radialSegments,
-      }));
+      return this.works.map((work) => {
+        if (work.di) {
+          return {
+            radiusTop: work.di * 5,
+            radiusBottom: work.di * 5,
+            height: work.wt === 'HT' ? thick + 6 : (work.dp * 10 + 3),
+            radialSegments: this.radialSegments,
+          };
+        }
+        return {
+          width: work.sx * 10,
+          depth: work.sy * 10,
+          height: work.wt === 'HT' ? thick + 6 : (work.dp * 10 + 3),
+        };
+      });
+    },
+    drillShapes() {
+      return this.works.map((work) => {
+        if (work.di) return '';
+        const { sx, sy } = work;
+        const sxout = sx * 5;
+        const syout = sy * 5;
+        const sxin = sxout - 60;
+        const syin = syout - 60;
+        return [
+          new Vector2(-sxin, -syout),
+          new Vector2(sxin, -syout),
+          new Vector2(sxout, -syin),
+          new Vector2(sxout, syin),
+          new Vector2(sxin, syout),
+          new Vector2(-sxin, syout),
+          new Vector2(-sxout, syin),
+          new Vector2(-sxout, -syin),
+        ];
+      });
+    },
+    drillDepths() {
+      const {
+        plankType,
+        plankDimension: { width, depth, height },
+      } = this;
+      let thick = 0;
+      if (plankType === 'FP') thick = height;
+      if (plankType === 'VP') thick = depth;
+      if (plankType === 'VDP') thick = width;
+
+      return this.works.map(work => (work.wt === 'HT' ? thick + 6 : (work.dp * 10 + 3)));
+    },
+    drillShapeRotations() {
+      const rightAngle = Math.PI / 2;
+      switch (this.plankType) {
+        case 'FP':
+          return this.works.map(work => `${work.sd === 1 ? rightAngle : -rightAngle} ${0} ${0}`);
+        case 'VP':
+          return this.works.map(work => `${work.sd === 1 && work.wt !== 'HT' ? 0 : rightAngle * 2} ${0} ${0}`);
+        case 'VDP':
+          return this.works.map(work => `${rightAngle} ${work.sd === 1 ? -rightAngle : rightAngle} ${rightAngle}`);
+        default:
+          return [];
+      }
     },
   },
   methods: {
@@ -280,48 +341,70 @@ export default {
         y,
         z,
         di,
+        sx,
+        sy,
         dp,
         dir,
       } = works[drillIndex];
-
-      if (wt === 'H') {
-        if (!this.hDiameters.includes(di)) works[drillIndex].di = Math.min(this.hDiFreeRange[1], Math.max(this.hDiFreeRange[0], di));
-      } else if (wt === 'HT') {
-        if (!this.htDiameters.includes(di)) works[drillIndex].di = Math.min(this.htDiFreeRange[1], Math.max(this.htDiFreeRange[0], di));
-      } else if (wt === 'HH') {
-        works[drillIndex].dp = Math.min(this.hhDpMax, Math.max(2, dp));
-      }
-
-      const rad = works[drillIndex].di / 2 + this.drillOffset;
       width /= 10;
       height /= 10;
       depth /= 10;
 
-      if (wt !== 'HH' || (dir !== 'XM' && dir !== 'XP')) {
-        if (plankType === 'VDP') works[drillIndex].x = Math.min(depth - rad, Math.max(rad, x));
-        else works[drillIndex].x = Math.min(width - rad, Math.max(rad, x));
-      }
-      if (wt !== 'HH' || (dir !== 'YM' && dir !== 'YP')) {
-        if (plankType === 'FP') works[drillIndex].y = Math.min(depth - rad, Math.max(rad, y));
-        else works[drillIndex].y = Math.min(height - rad, Math.max(rad, y));
-      }
-      if (wt === 'HH') {
-        if (plankType === 'FP') {
-          works[drillIndex].z = Math.min(height - rad, Math.max(rad, z));
-          if (dir === 'YM') works[drillIndex].y = depth;
-          else if (dir === 'XM') works[drillIndex].x = width;
-        } else if (plankType === 'VP') {
-          works[drillIndex].z = Math.min(depth - rad, Math.max(rad, z));
-          if (dir === 'YM') works[drillIndex].y = height;
-          else if (dir === 'XM') works[drillIndex].x = width;
-        } else {
-          works[drillIndex].z = Math.min(width - rad, Math.max(rad, z));
-          if (dir === 'YM') works[drillIndex].y = height;
-          else if (dir === 'XM') works[drillIndex].x = depth;
+      if (di) {
+        if (wt === 'H') {
+          if (!this.hDiameters.includes(di)) works[drillIndex].di = Math.min(this.hDiFreeRange[1], Math.max(this.hDiFreeRange[0], di));
+        } else if (wt === 'HT') {
+          if (!this.htDiameters.includes(di)) works[drillIndex].di = Math.min(this.htDiFreeRange[1], Math.max(this.htDiFreeRange[0], di));
+        } else if (wt === 'HH') {
+          if (!this.hhDiameters.includes(di)) [works[drillIndex].di] = this.hhDiameters;
         }
-        if (dir === 'YP') works[drillIndex].y = 0;
-        else if (dir === 'XP') works[drillIndex].x = 0;
-      } else works[drillIndex].z = 0;
+      } else {
+        if (plankType === 'VDP') works[drillIndex].sx = Math.max(15, Math.min(sx, depth - this.drillOffset * 2));
+        else works[drillIndex].sx = Math.max(15, Math.min(sx, width - this.drillOffset * 2));
+        if (plankType === 'FP') works[drillIndex].sy = Math.max(15, Math.min(sy, depth - this.drillOffset * 2));
+        else works[drillIndex].sy = Math.max(15, Math.min(sy, height - this.drillOffset * 2));
+      }
+
+      if (wt === 'HH') {
+        works[drillIndex].dp = Math.min(this.hhDpMax, Math.max(2, dp));
+      }
+
+      const rad = works[drillIndex].di / 2 + this.drillOffset;
+
+      if (works[drillIndex].di) {
+        if (wt !== 'HH' || (dir !== 'XM' && dir !== 'XP')) {
+          if (plankType === 'VDP') works[drillIndex].x = Math.min(depth - rad, Math.max(rad, x));
+          else works[drillIndex].x = Math.min(width - rad, Math.max(rad, x));
+        }
+        if (wt !== 'HH' || (dir !== 'YM' && dir !== 'YP')) {
+          if (plankType === 'FP') works[drillIndex].y = Math.min(depth - rad, Math.max(rad, y));
+          else works[drillIndex].y = Math.min(height - rad, Math.max(rad, y));
+        }
+        if (wt === 'HH') {
+          if (plankType === 'FP') {
+            works[drillIndex].z = Math.min(height - rad, Math.max(rad, z));
+            if (dir === 'YM') works[drillIndex].y = depth;
+            else if (dir === 'XM') works[drillIndex].x = width;
+          } else if (plankType === 'VP') {
+            works[drillIndex].z = Math.min(depth - rad, Math.max(rad, z));
+            if (dir === 'YM') works[drillIndex].y = height;
+            else if (dir === 'XM') works[drillIndex].x = width;
+          } else {
+            works[drillIndex].z = Math.min(width - rad, Math.max(rad, z));
+            if (dir === 'YM') works[drillIndex].y = height;
+            else if (dir === 'XM') works[drillIndex].x = depth;
+          }
+          if (dir === 'YP') works[drillIndex].y = 0;
+          else if (dir === 'XP') works[drillIndex].x = 0;
+        } else works[drillIndex].z = 0;
+      } else {
+        const sxOffset = works[drillIndex].sx / 2 + this.drillOffset;
+        const syOffset = works[drillIndex].sy / 2 + this.drillOffset;
+        if (plankType === 'VDP') works[drillIndex].x = Math.min(depth - sxOffset, Math.max(sxOffset, x));
+        else works[drillIndex].x = Math.min(width - sxOffset, Math.max(sxOffset, x));
+        if (plankType === 'FP') works[drillIndex].y = Math.min(depth - syOffset, Math.max(syOffset, y));
+        else works[drillIndex].y = Math.min(height - syOffset, Math.max(syOffset, y));
+      }
 
       this.$emit('update:works', works);
     },

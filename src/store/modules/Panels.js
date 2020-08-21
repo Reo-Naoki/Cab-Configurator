@@ -93,7 +93,16 @@ const getters = {
       };
 
       if (panel.layer !== 'Structure') newPanel.layer = panel.layer;
-      if (panel.works.length > 0) newPanel.works = panel.works;
+      if (panel.works.length > 0) {
+        newPanel.works = panel.works.map((work) => {
+          const newWork = work;
+          if (newWork.di > 0 && newWork.sx && newWork.sy) {
+            delete newWork.sx;
+            delete newWork.sy;
+          }
+          return newWork;
+        });
+      }
       if (points) {
         if (points.length !== 4) {
           newPanel.points = points;
@@ -106,7 +115,6 @@ const getters = {
             }
           }
         }
-        if (panel.works) newPanel.works = panel.works;
       }
 
       return newPanel;
@@ -213,7 +221,12 @@ const mutations = {
   setPrevDimension(s, prevDimension) {
     s.prevDimension = prevDimension;
   },
-  setPanelData(s, { index, key, data }) {
+  setPanelData(s, {
+    index,
+    key,
+    data,
+    noSave,
+  }) {
     if (index >= s.panels.length || index < 0) return;
 
     let newData = data;
@@ -231,6 +244,7 @@ const mutations = {
     }
 
     Vue.set(s.panels[index], key, newData);
+    if (!noSave) EventBus.$emit('save');
   },
   deletePanel(s, { id, save = false }) {
     const index = s.panels.findIndex(p => String(p.id) === String(id));
@@ -276,6 +290,7 @@ const mutations = {
   changeDrillEditMode(s) {
     if (s.drillEditMode === 'Normal') s.drillEditMode = 'Self Hidden';
     else if (s.drillEditMode === 'Self Hidden') s.drillEditMode = 'Others Hidden';
+    else if (s.drillEditMode === 'Others Hidden') s.drillEditMode = 'All Hidden';
     else s.drillEditMode = 'Normal';
   },
   enableCreateDrill(s, isEnable = true) {

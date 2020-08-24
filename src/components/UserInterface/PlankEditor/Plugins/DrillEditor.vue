@@ -2,22 +2,6 @@
   <div v-if="selectedObject3D">
     <div class="wrapper-name-panel">
       <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
-      <div v-bind:class="['round-icon-2 medium-emphasis']" @click="changeMode()" :title="`${drillEditMode} Mode`">
-        <svg aria-hidden="true" focusable="false" width="1.5em" height="1.5em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-             preserveAspectRatio="xMidYMid meet" viewBox="1 1 24 24">
-          <path v-if="drillEditMode === 'Normal'" d="M14 3H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" fill="#aaaaaa"/>
-          <path v-if="drillEditMode === 'Normal'" d="M21 19v-9a2 2 0 0 0-2-2h-1v8a2 2 0 0 1-2 2H8v1a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z" fill="#aaaaaa"/>
-          <path v-else-if="drillEditMode === 'Self Hidden'"
-                d="M5 16h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103 0-2 .897-2
-                2v9c0 1.103.897 2 2 2zm13.997 3H10v-9h9l-.003 9z" fill="#aaaaaa"/>
-          <path v-else-if="drillEditMode === 'Others Hidden'"
-                d="M14 3H5c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2 2h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897
-                2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2zM5 5h9l-.003 9H5V5z" fill="#aaaaaa"/>
-          <path v-else-if="drillEditMode === 'All Hidden'"
-                d="M5 16h3v3c0 1.103.897 2 2 2h9c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2
-                2zm9.001-2L14 10h.001v4zM19 10l.001 9H10v-3h4c1.103 0 2-.897 2-2v-4h3zM5 5h9v3h-4c-1.103 0-2 .897-2 2v4H5V5z" fill="#aaaaaa"/>
-        </svg>
-      </div>
       <div v-bind:class="[`round-icon-2${enableCreateDrill ? '' : ' medium-emphasis'}`]" @click="createDrill()" title="Create Drill">
         <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
              preserveAspectRatio="xMidYMid meet" viewBox="3 2 20 20">
@@ -116,6 +100,7 @@
 
 <script>
 import { mapState } from 'vuex';
+import EventBus from '../../../EventBus/EventBus';
 
 export default {
   name: 'DrillEditor',
@@ -134,13 +119,11 @@ export default {
     ...mapState('Panels', [
       'panels',
       'enableCreateDrill',
-      'drillEditMode',
       'hDiameters',
       'hhDiameters',
       'htDiameters',
       'hDiFreeRange',
       'htDiFreeRange',
-      'hhDiFreeRange',
     ]),
     ...mapState('Camera', [
       'selectedObject3D',
@@ -215,6 +198,7 @@ export default {
             z,
           };
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       },
     },
@@ -247,12 +231,22 @@ export default {
 
           works[drillIndex].di = Math.max(1, parseFloat(val) || 1);
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       },
     },
     inputDI: {
       get() { return this.di; },
-      set(val) { this.drillDI = val; },
+      set(val) {
+        this.drillDI = val;
+        if (this.wt === 'H') {
+          if (this.hDiameters.includes(val) || (this.hDiFreeRange[0] <= val && val <= this.hDiFreeRange[1])) this.di = val;
+        } else if (this.wt === 'HT') {
+          if (this.htDiameters.includes(val) || (this.htDiFreeRange[0] <= val && val <= this.htDiFreeRange[1])) this.di = val;
+        } else if (this.wt === 'HH') {
+          if (this.hhDiameters.includes(val)) this.di = val;
+        }
+      },
     },
     sx: {
       get() {
@@ -348,6 +342,7 @@ export default {
           works[drillIndex].dir = dir;
           works[drillIndex].wt = val;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       },
     },
@@ -370,6 +365,7 @@ export default {
 
           works[drillIndex].sd = val;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       },
     },
@@ -390,6 +386,7 @@ export default {
 
           works[drillIndex].dir = val;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       },
     },
@@ -419,6 +416,7 @@ export default {
 
           works[drillIndex].sx = this.sizeX;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       }
     },
@@ -431,6 +429,7 @@ export default {
 
           works[drillIndex].sy = this.sizeY;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       }
     },
@@ -444,6 +443,7 @@ export default {
           if (works[drillIndex].wt === 'H') works[drillIndex].dp = Math.max(2, Math.min(window.panels[id].thick - 2, this.drillDepth));
           else works[drillIndex].dp = this.drillDepth;
           window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+          EventBus.$emit('save');
         }
       }
     },
@@ -457,13 +457,13 @@ export default {
         const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
 
         if (type === 'round') {
-          if (works[drillIndex].di === 0) {
+          if (!works[drillIndex].di) {
             works[drillIndex].di = Math.min(works[drillIndex].sx, works[drillIndex].sy);
             works[drillIndex].sx = 0;
             works[drillIndex].sy = 0;
           }
         } else if (type === 'rect') {
-          if (works[drillIndex].di > 0) {
+          if (works[drillIndex].di) {
             works[drillIndex].sx = works[drillIndex].di;
             works[drillIndex].sy = works[drillIndex].di;
             works[drillIndex].di = 0;
@@ -471,20 +471,19 @@ export default {
         }
 
         window.panels[id].$refs.drills.recalcDrillPos(works, drillIndex);
+        EventBus.$emit('save');
       }
     },
     createDrill() {
       this.$store.commit('Panels/enableCreateDrill', !this.enableCreateDrill);
-    },
-    changeMode() {
-      this.$store.commit('Panels/changeDrillEditMode');
     },
     deleteDrill() {
       const id = this.selectedObject3D.object3d.name.split('_')[0];
       const works = window.panels[id].works.slice(0).map(work => ({ ...work }));
 
       works.splice(this.selectedDrillIndex, 1);
-      window.panels[id].works = works;
+      window.panels[id].$refs.drills.recalcDrillPos(works, -1);
+      EventBus.$emit('save');
 
       this.$store.commit('Camera/selectObject3D', {
         object3d: {

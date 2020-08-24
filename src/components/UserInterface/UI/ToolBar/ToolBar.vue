@@ -4,6 +4,7 @@
     <ShapeEditButton />
     <DrillEditButton />
     <DuplicateButton />
+    <VisibilityButton />
   </div>
 </template>
 
@@ -13,6 +14,7 @@ import RulerButton from './Plugins/RulerButton';
 import ShapeEditButton from './Plugins/ShapeEditButton';
 import DrillEditButton from './Plugins/DrillEditButton';
 import DuplicateButton from './Plugins/DuplicateButton';
+import VisibilityButton from './Plugins/VisibilityButton';
 
 export default {
   name: 'ToolBar',
@@ -21,6 +23,7 @@ export default {
     ShapeEditButton,
     DrillEditButton,
     DuplicateButton,
+    VisibilityButton,
   },
 };
 </script>

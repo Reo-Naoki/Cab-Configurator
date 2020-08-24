@@ -19,7 +19,7 @@ const state = {
   enableShapeEdit: false,
   enableCreatePoint: false,
   enableDrillEdit: false,
-  drillEditMode: 'Normal',
+  panelVisibleMode: 'Normal',
   enableCreateDrill: false,
   enableLayerManager: false,
   rulerStartPoint: new Vector3(0, 0, 0),
@@ -44,7 +44,7 @@ function initEnableState() {
   state.enableShapeEdit = false;
   state.enableCreatePoint = false;
   state.enableDrillEdit = false;
-  state.drillEditMode = 'Normal';
+  state.panelVisibleMode = 'Normal';
   state.enableCreateDrill = false;
   state.enableLayerManager = false;
 }
@@ -86,20 +86,29 @@ const getters = {
         thick: panel.thick,
         ptype: resizable ? panel.ptype : `Hard-${panel.ptype}`,
         name: panel.name,
-        pos: panel.pos,
         material: panel.material,
         id: panel.id,
         edges: panel.edges,
       };
 
+      newPanel.pos = [Math.round(panel.pos[0] * 10) / 10, Math.round(panel.pos[1] * 10) / 10, Math.round(panel.pos[2] * 10) / 10];
+
       if (panel.layer !== 'Structure') newPanel.layer = panel.layer;
       if (panel.works.length > 0) {
         newPanel.works = panel.works.map((work) => {
           const newWork = work;
-          if (newWork.di > 0 && newWork.sx && newWork.sy) {
+          if (newWork.di > 0) {
             delete newWork.sx;
             delete newWork.sy;
+          } else {
+            delete newWork.di;
           }
+          if (newWork.wt !== 'HH') {
+            delete newWork.dir;
+          } else {
+            delete newWork.sd;
+          }
+
           return newWork;
         });
       }
@@ -119,6 +128,7 @@ const getters = {
 
       return newPanel;
     });
+
     groups.forEach(group => newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => panel.id === list.id)) }));
 
     const { materials } = rootState.materials;
@@ -287,11 +297,11 @@ const mutations = {
     initEnableState();
     s.enableDrillEdit = isEnable;
   },
-  changeDrillEditMode(s) {
-    if (s.drillEditMode === 'Normal') s.drillEditMode = 'Self Hidden';
-    else if (s.drillEditMode === 'Self Hidden') s.drillEditMode = 'Others Hidden';
-    else if (s.drillEditMode === 'Others Hidden') s.drillEditMode = 'All Hidden';
-    else s.drillEditMode = 'Normal';
+  changePanelVisibleMode(s) {
+    if (s.panelVisibleMode === 'Normal') s.panelVisibleMode = 'Self Hidden';
+    else if (s.panelVisibleMode === 'Self Hidden') s.panelVisibleMode = 'Others Hidden';
+    else if (s.panelVisibleMode === 'Others Hidden') s.panelVisibleMode = 'All Hidden';
+    else s.panelVisibleMode = 'Normal';
   },
   enableCreateDrill(s, isEnable = true) {
     s.enableCreateDrill = isEnable;

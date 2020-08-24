@@ -253,7 +253,7 @@ export default {
       'enableMoving',
       'enableShapeEdit',
       'enableDrillEdit',
-      'drillEditMode',
+      'panelVisibleMode',
       'moveDirection',
       'prevPosition',
     ]),
@@ -279,11 +279,11 @@ export default {
     },
     isPanelVisible() {
       if (!this.visible) return false;
-      if (!this.enableDrillEdit) return true;
-      if (this.drillEditMode === 'Normal') return true;
-      if (this.drillEditMode === 'Self Hidden') return !this.isSelected;
-      if (this.drillEditMode === 'Others Hidden') return this.isSelected;
-      if (this.drillEditMode === 'All Hidden') return false;
+      if (!this.selectedObject3D) return true;
+      if (this.panelVisibleMode === 'Normal') return true;
+      if (this.panelVisibleMode === 'Self Hidden') return !this.isSelected;
+      if (this.panelVisibleMode === 'Others Hidden') return this.isSelected;
+      if (this.panelVisibleMode === 'All Hidden') return false;
       return true;
     },
     isParentSelected() {

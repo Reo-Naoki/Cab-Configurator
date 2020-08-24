@@ -16,6 +16,7 @@
 import { Vector3 } from 'three';
 import { mapState } from 'vuex';
 import Coordinate from './Common/Coordinate';
+import EventBus from '../../../EventBus/EventBus';
 
 export default {
   name: 'DrillCoordinate',
@@ -219,6 +220,7 @@ export default {
       this.inputElement.value = distance / 10 * sign;
 
       this.recalcDrillPos(works, drillIndex);
+      EventBus.$emit('save');
     },
     createInput() {
       const inputField = document.createElement('input');

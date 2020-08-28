@@ -1,42 +1,49 @@
 <template>
   <div class="ard-savebox" v-if="isVisible">
-    <h3>{{t('saveyourproject')}}</h3>
-    <div class="trait-horizontal middle" v-if="currentProject"></div>
-    <div class="ard-savebox-inside rm" v-if="currentProject">
-      <div class="ard-projectlist-projectname">
-        {{t('currentproject')}}:
+    <div v-if="!isImport">
+      <h3>{{t('saveyourproject')}}</h3>
+      <div class="trait-horizontal middle" v-if="currentProject"></div>
+      <div class="ard-savebox-inside rm" v-if="currentProject">
+        <div class="ard-projectlist-projectname">
+          {{t('currentproject')}}:
+        </div>
+        <img :src="projectImgUrl(currentProject.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
+        <div class="ard-projectlist-projectname">{{currentProject.name}} <A :href="projectUrl(currentProject.id_user_design)" target="_blank">({{currentProject.id_user_design}})</A></div>
+        <a href="#" class="eel-button w-inline-block" @click="saveCurrent()">
+          <div>{{t('saveproject')}}</div>
+        </a>
       </div>
-      <img :src="projectImgUrl(currentProject.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
-      <div class="ard-projectlist-projectname">{{currentProject.name}} <A :href="projectUrl(currentProject.id_user_design)" target="_blank">({{currentProject.id_user_design}})</A></div>
-      <a href="#" class="eel-button w-inline-block" @click="saveCurrent()">
-        <div>{{t('saveproject')}}</div>
-      </a>
-    </div>
-    <div class="trait-horizontal middle"></div>
-    <div class="ard-savebox-inside rm">
-      <div class="ard-projectlist-projectname">
-        <label for="projectName">{{t('saveas')}}:</label>
-        <input
-          v-model="newName"
-          id="projectName"
-          size="29"
-          type="text"
-          :placeholder="t('projectname')"
-          title=""
-        >
+      <div class="trait-horizontal middle"></div>
+      <div class="ard-savebox-inside rm">
+        <div class="ard-projectlist-projectname">
+          <label for="projectName">{{t('saveas')}}:</label>
+          <input
+            v-model="newName"
+            id="projectName"
+            size="29"
+            type="text"
+            :placeholder="t('projectname')"
+            title=""
+          >
+        </div>
+        <a href="#" class="eel-button w-inline-block" @click="saveProjectAs(newName)">
+          <div>{{t('saveproject')}}</div>
+        </a>
       </div>
-      <a href="#" class="eel-button w-inline-block" @click="saveProjectAs(newName)">
-        <div>{{t('saveproject')}}</div>
-      </a>
     </div>
+    <h3 v-else>{{t('importyourproject')}}</h3>
     <div class="trait-horizontal middle"></div>
     <div class="list-projet-rm">
       <div v-for="(project, pid) in otherVglProjects" :key="pid" class="ard-projectlistitem w-clearfix">
         <img :src="projectImgUrl(project.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
         <div class="ard-projectlist-projectname">{{project.id_user_design}} - {{project.name}} du {{project.date}}</div>
-        <a :href="projectUrl(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"
+        <a v-if="!isImport" :href="projectUrl(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"
            target="_blank">
           <div>{{t('open')}}</div>
+        </a>
+        <a v-else @click="importProject(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"
+           target="_blank">
+          <div>{{t('import')}}</div>
         </a>
       </div>
       <div v-if="projects.length === 0">{{t('noproject')}}.</div>
@@ -49,10 +56,11 @@
 
 <script>
 /* eslint-disable camelcase */
+import { MessageBox } from 'element-ui';
 import { mapGetters, mapState } from 'vuex';
 import EventBus from '../../../../EventBus/EventBus';
 import { sendMessage, siteUrl } from '../../../../../api/messages';
-import { isUserLogged } from '../../../../../api/dajax';
+import { callDajax, isUserLogged } from '@/api/dajax';
 
 export default {
   name: 'projectsBox',
@@ -62,6 +70,7 @@ export default {
       updateList: false,
       isVisible: false,
       newName: '', // New name for Save As
+      isImport: false,
       actionWatcherDestroyer: () => {},
     };
   },
@@ -106,6 +115,23 @@ export default {
     projectUrl(id_user_design) {
       return `${siteUrl}/meuble/${id_user_design}`;
     },
+    importProject(id_user_design) {
+      this.getRList(id_user_design);
+    },
+    async getRList(id) {
+      try {
+        const response = await callDajax('getprojectdata', { project_id: id });
+        const json = JSON.parse(response.data.serverresult) || {};
+        this.$store.dispatch('Panels/importRlist', json).then(() => { this.isVisible = false; });
+      } catch (e) {
+        console.error(e);
+        MessageBox.alert('Impossible de charger le projet, contactez nous si le problème persiste.', {
+          type: 'error',
+          title: 'Erreur',
+          confirmButtonText: 'Ok',
+        });
+      }
+    },
     saveCurrent() {
       this.$store.dispatch('Panels/save', { name: this.currentProject.name });
     },
@@ -133,6 +159,11 @@ export default {
       this.updateList = true;
     });
     EventBus.$on('showProjectsList', () => {
+      this.isImport = false;
+      this.displayProjects();
+    });
+    EventBus.$on('showImportProjectsList', () => {
+      this.isImport = true;
       this.displayProjects();
     });
     EventBus.$on('hideProjectsList', () => {

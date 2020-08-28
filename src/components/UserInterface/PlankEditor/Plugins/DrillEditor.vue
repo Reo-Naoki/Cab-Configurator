@@ -39,7 +39,7 @@
             <select class="dimension-select w-select diameter-select" v-model.number="di">
               <option v-for="(diameter, index) in diameterList" :key="`list${index}`" :value="diameter">{{diameter}} mm</option>
             </select>
-            <input class="diameter-input" type="text" name="format" v-model.number="inputDI" @keydown="applyDI" :readonly="!this[`${wt.toLowerCase()}DiFreeRange`]" />
+            <input class="diameter-input" type="text" name="format" v-model.number="inputDI" @keydown="applyDI" @blur="applyDI" :readonly="!this[`${wt.toLowerCase()}DiFreeRange`]" />
           </div>
         </div>
         <div v-else class="wrapper-position">
@@ -237,16 +237,7 @@ export default {
     },
     inputDI: {
       get() { return this.di; },
-      set(val) {
-        this.drillDI = val;
-        if (this.wt === 'H') {
-          if (this.hDiameters.includes(val) || (this.hDiFreeRange[0] <= val && val <= this.hDiFreeRange[1])) this.di = val;
-        } else if (this.wt === 'HT') {
-          if (this.htDiameters.includes(val) || (this.htDiFreeRange[0] <= val && val <= this.htDiFreeRange[1])) this.di = val;
-        } else if (this.wt === 'HH') {
-          if (this.hhDiameters.includes(val)) this.di = val;
-        }
-      },
+      set(val) { this.drillDI = val; },
     },
     sx: {
       get() {
@@ -448,7 +439,7 @@ export default {
       }
     },
     applyDI(event) {
-      if (event.key === 'Enter') { this.di = this.drillDI; }
+      if (event.type === 'blur' || event.key === 'Enter') { this.di = this.drillDI; }
     },
     changeDrillShape(type) {
       const drillIndex = this.selectedDrillIndex;

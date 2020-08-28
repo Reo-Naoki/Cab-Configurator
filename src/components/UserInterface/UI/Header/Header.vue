@@ -8,10 +8,17 @@
         </div>
         <div id="ard-2dzoomplus" class="and-margin-icon"></div>
       </div>
+      <div v-if="this.$route.query.spufenb === 'true'">
+        <div class="and-margin-icon" title="Importer un projet">
+          <div class="round-icon white" @click="openImportRListBox()"><em class="el-icon-document-add"/></div>
+          <div class="and-text-under-icon" >Un projet</div>
+        </div>
+        <div class="and-margin-icon"></div>
+      </div>
       <div>
-        <div class="and-margin-icon">
-          <div class="round-icon white" @click="() => { this.showImportBox = true; }"><em class="el-icon-document-add"/></div>
-          <div class="and-text-under-icon">Importer un projet</div>
+        <div class="and-margin-icon" title="Importez votre projet">
+          <div class="round-icon white" @click="openImportProjectBox()"><em class="el-icon-folder-add"/></div>
+          <div class="and-text-under-icon">Votre projet</div>
         </div>
         <div class="and-margin-icon"></div>
       </div>
@@ -97,6 +104,12 @@ export default {
     ...mapActions('Panels', [
       'addToCart',
     ]),
+    openImportRListBox() {
+      this.showImportBox = true;
+    },
+    openImportProjectBox() {
+      EventBus.$emit('showImportProjectsList');
+    },
     updatePrice() {
       this.$store.dispatch('Panels/requestGeneralData').catch(() => {
         console.error('requestGeneralData failed to return price');

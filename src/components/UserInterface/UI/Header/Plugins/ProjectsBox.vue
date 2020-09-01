@@ -34,7 +34,7 @@
     <h3 v-else>{{t('importyourproject')}}</h3>
     <div class="trait-horizontal middle"></div>
     <div class="list-projet-rm">
-      <div v-for="(project, pid) in projects" :key="pid" class="ard-projectlistitem w-clearfix">
+      <div v-for="(project, pid) in otherProjects" :key="pid" class="ard-projectlistitem w-clearfix">
         <img :src="projectImgUrl(project.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
         <div class="ard-projectlist-projectname">{{project.id_user_design}} - {{project.name}} du {{project.date}}</div>
         <a v-if="!isImport" :href="projectUrl(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"
@@ -96,7 +96,7 @@ export default {
     ]),
     ...mapGetters('User', [
       'currentProject',
-      'otherVglProjects',
+      'otherProjects',
     ]), /*
     projectsWithoutCurrent() {
       return this.projectsList.filter(p => parseInt(p.id_user_design, 10) !== this.ref_id);
@@ -120,9 +120,9 @@ export default {
     },
     async getRList(id) {
       try {
-        const response = await callDajax('getprojectdata', { project_id: id });
-        const json = JSON.parse(response.data.serverresult) || {};
-        this.$store.dispatch('Panels/importRlist', json).then(() => { this.isVisible = false; });
+        const response = await callDajax('getrlistfromprojectid', { project_id: id });
+        const json = JSON.parse(response.data.serverresult) || { data: {} };
+        this.$store.dispatch('Panels/importRlist', json.data).then(() => { this.isVisible = false; });
       } catch (e) {
         console.error(e);
         MessageBox.alert('Impossible de charger le projet, contactez nous si le problème persiste.', {

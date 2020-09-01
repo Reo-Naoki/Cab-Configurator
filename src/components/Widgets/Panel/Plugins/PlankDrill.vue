@@ -594,7 +594,7 @@ export default {
         plankDimension: { width, depth, height },
       } = this;
       const index = this.selectedDrillIndex;
-      const works = this.drillWorks.slice(0).map(work => ({ ...work }));
+      const works = this.drillWorks.slice(0).map(drillWork => ({ ...drillWork }));
       const work = works[index];
 
       if (type === 'Left') {

@@ -34,7 +34,7 @@
     <h3 v-else>{{t('importyourproject')}}</h3>
     <div class="trait-horizontal middle"></div>
     <div class="list-projet-rm">
-      <div v-for="(project, pid) in otherVglProjects" :key="pid" class="ard-projectlistitem w-clearfix">
+      <div v-for="(project, pid) in projects" :key="pid" class="ard-projectlistitem w-clearfix">
         <img :src="projectImgUrl(project.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
         <div class="ard-projectlist-projectname">{{project.id_user_design}} - {{project.name}} du {{project.date}}</div>
         <a v-if="!isImport" :href="projectUrl(project.id_user_design)" class="eel-button medium smallbutton w-inline-block"

@@ -26,11 +26,11 @@
           <label class="inline-block normal attribute">Position:</label>
           <div class="wrapper-position">
             <label v-if="isPositionVisible.x" class="inline-block normal label">X:</label>
-            <input v-if="isPositionVisible.x" class="dimension-box position w-input" v-model.number="x" @keydown="applyX"/>
+            <input v-if="isPositionVisible.x" class="dimension-box position w-input" v-model.number="x" @keydown="applyX" @blur="applyX"/>
             <label v-if="isPositionVisible.y" class="inline-block normal label">Y:</label>
-            <input v-if="isPositionVisible.y" class="dimension-box position w-input" v-model.number="y" @keydown="applyY"/>
+            <input v-if="isPositionVisible.y" class="dimension-box position w-input" v-model.number="y" @keydown="applyY" @blur="applyY"/>
             <label v-if="isPositionVisible.z" class="inline-block normal label">Z:</label>
-            <input v-if="isPositionVisible.z" class="dimension-box position w-input" v-model.number="z" @keydown="applyZ"/>
+            <input v-if="isPositionVisible.z" class="dimension-box position w-input" v-model.number="z" @keydown="applyZ" @blur="applyZ"/>
           </div>
         </div>
         <div v-if="di > 0" class="wrapper-position">
@@ -46,14 +46,14 @@
           <label class="inline-block normal attribute">Size:</label>
           <div class="wrapper-position">
             <label class="inline-block normal label">SX:</label>
-            <input class="dimension-box position w-input" v-model.number="sx" @keydown="applySX"/>
+            <input class="dimension-box position w-input" v-model.number="sx" @keydown="applySX" @blur="applySX"/>
             <label class="inline-block normal label">SY:</label>
-            <input class="dimension-box position w-input" v-model.number="sy" @keydown="applySY"/>
+            <input class="dimension-box position w-input" v-model.number="sy" @keydown="applySY" @blur="applySY"/>
           </div>
         </div>
         <div v-if="isDepthVisible" class="wrapper-position">
           <label class="inline-block normal attribute">Depth:</label>
-          <input class="dimension-box position w-input" v-model.number="dp" @keydown="applyDP"/>
+          <input class="dimension-box position w-input" v-model.number="dp" @keydown="applyDP" @blur="applyDP"/>
         </div>
         <div class="wrapper-position">
           <label class="inline-block normal attribute">Type:</label>
@@ -384,22 +384,22 @@ export default {
   },
   methods: {
     applyX(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         this.position = { ...this.position, x: this.posX };
       }
     },
     applyY(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         this.position = { ...this.position, y: this.posY };
       }
     },
     applyZ(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         this.position = { ...this.position, z: this.posZ };
       }
     },
     applySX(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         const drillIndex = this.selectedDrillIndex;
         if (drillIndex >= 0) {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
@@ -412,7 +412,7 @@ export default {
       }
     },
     applySY(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         const drillIndex = this.selectedDrillIndex;
         if (drillIndex >= 0) {
           const id = this.selectedObject3D.object3d.name.split('_')[0];
@@ -425,7 +425,7 @@ export default {
       }
     },
     applyDP(event) {
-      if (event.key === 'Enter') {
+      if (event.type === 'blur' || event.key === 'Enter') {
         const drillIndex = this.selectedDrillIndex;
         if (drillIndex >= 0) {
           const id = this.selectedObject3D.object3d.name.split('_')[0];

@@ -124,46 +124,6 @@ export default {
       if (!isInit) {
         const newDimension = { ...this.dimension };
         const newPosition = { ...this.position };
-        // if (this.hasFeuillure.top !== hasFeuillure.top) {
-        //   // top connection changed, fix real dimension
-        //   if (hasFeuillure.top) {
-        //     // now have top connection
-        //     newDimension.y += this.dimensionsMarginTop;
-        //   } else {
-        //     newDimension.y -= this.dimensionsMarginTop;
-        //   }
-        // }
-        // if (this.hasFeuillure.right !== hasFeuillure.right) {
-        //   // right connection changed, fix real dimension
-        //   if (hasFeuillure.right) {
-        //     // now have right connection
-        //     newDimension.x += this.dimensionsMarginRight;
-        //   } else {
-        //     newDimension.x -= this.dimensionsMarginRight;
-        //   }
-        // }
-        // if (this.hasFeuillure.left !== hasFeuillure.left) {
-        //   // left connection changed, fix real position
-        //   if (hasFeuillure.left) {
-        //     // now have left connection
-        //     newPosition.x -= this.dimensionsMarginLeft;
-        //     newDimension.x += this.dimensionsMarginLeft;
-        //   } else {
-        //     newPosition.x += this.dimensionsMarginLeft;
-        //     newDimension.x -= this.dimensionsMarginLeft;
-        //   }
-        // }
-        // if (this.hasFeuillure.bottom !== hasFeuillure.bottom) {
-        //   // bottom connection changed, fix real position
-        //   if (hasFeuillure.bottom) {
-        //     // now have bottom connection
-        //     newPosition.y -= this.dimensionsMarginBottom;
-        //     newDimension.y += this.dimensionsMarginBottom;
-        //   } else {
-        //     newPosition.y += this.dimensionsMarginBottom;
-        //     newDimension.y -= this.dimensionsMarginBottom;
-        //   }
-        // }
         if (newDimension.x !== this.dimension.x || newDimension.y !== this.dimension.y || newDimension.z !== this.dimension.z) {
           // check for changes
           this.dimension = newDimension;

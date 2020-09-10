@@ -88,8 +88,7 @@ export default {
     },
     objects() {
       return Object.values(this.vglNamespace.object3ds)
-        .filter(obj => (obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isConnectionBubble
-          || (obj.isPhysicalGeometry && (!this.enableShapeEdit || (this.enableShapeEdit && this.enableCreatePoint)))
+        .filter(obj => (obj.isPanel || obj.isDimension || obj.isCoordinate || obj.isConnectionBubble || obj.isPhysicalGeometry
           || (obj.isShapeVertex && this.enableShapeEdit)
           || (obj.isDrillGeometry && this.enableDrillEdit)) && obj.visible);
     },
@@ -299,6 +298,9 @@ export default {
             this.$emit('createdrill', intersects[0].point);
             this.$store.commit('Panels/enableCreateDrill', false);
           }
+        } else if (this.prevMousePos.distanceTo(new Vector2(event.clientX, event.clientY)) < 10) {
+          this.$store.commit('Panels/enableShapeEdit', false);
+          this.domElement.style.cursor = 'auto';
         } else {
           this.domElement.style.cursor = 'auto';
         }

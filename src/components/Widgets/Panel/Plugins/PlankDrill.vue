@@ -330,6 +330,12 @@ export default {
 
       works.push(newWork);
       this.recalcDrillPos(works, works.length - 1);
+      this.$store.commit('Camera/selectObject3D', {
+        object3d: {
+          name: `${this.plankID}_drill_${works.length - 1}_geometry`,
+          isDrillGeometry: true,
+        },
+      });
       EventBus.$emit('save');
     },
     recalcDrillPos(newWorks, drillIndex) {

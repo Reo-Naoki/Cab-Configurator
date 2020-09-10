@@ -148,9 +148,10 @@ export default {
         case 'wooddowels':
         case 'holeline32':
         case 'adj40':
-        case 'hdfgrove':
         case 'hinged':
           return this.connectedPanelType !== 'HDFPanel';
+        case 'hdfgrove':
+          return this.connectedPanelType === 'HDFPanel';
         default:
           return false;
       }

@@ -97,16 +97,22 @@ const getters = {
       if (panel.works.length > 0) {
         newPanel.works = panel.works.map((work) => {
           const newWork = work;
+
           if (newWork.di > 0) {
             delete newWork.sx;
             delete newWork.sy;
           } else {
             delete newWork.di;
           }
+
           if (newWork.wt !== 'HH') {
             delete newWork.dir;
           } else {
             delete newWork.sd;
+          }
+
+          if (newWork.wt === 'HT') {
+            newWork.dp = 0;
           }
 
           return newWork;
@@ -150,10 +156,14 @@ const mutations = {
     panels.forEach((p) => {
       if (!p.ptype.startsWith('group_')) {
         const resizable = !p.ptype.includes('Hard');
+        const pos = [Math.round(p.pos[0] * 10) / 10, Math.round(p.pos[1] * 10) / 10, Math.round(p.pos[2] * 10) / 10];
         const points = p.points ? p.points.map(point => [Math.round(point[0] * 10) / 10, Math.round(point[1] * 10) / 10]) : null;
 
         s.panels.push({
           ...p,
+          x: Math.round(p.x * 10) / 10,
+          y: Math.round(p.y * 10) / 10,
+          pos,
           points: resizable ? (points || [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]]) : null,
           ptype: resizable ? p.ptype : p.ptype.split('-')[1],
           id: p.id.split('-')[0],

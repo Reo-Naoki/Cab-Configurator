@@ -453,8 +453,28 @@ export default {
                 default:
                   return [];
               }
+            case 'VP':
+              switch (side) {
+                case 'LBL':
+                  return ['UBL', 'LFL', 'LBR'];
+                case 'LFR':
+                  return ['UFR', 'LFL', 'LBR'];
+                case 'LBR':
+                  return ['UBR', 'LFR', 'LBL'];
+                case 'LFL':
+                  return ['UFL', 'LFR', 'LBL'];
+                case 'UBL':
+                  return ['UFL', 'UBR', 'LBL'];
+                case 'UFR':
+                  return ['UFL', 'UBR', 'LFR'];
+                case 'UBR':
+                  return ['UFR', 'UBL', 'LBR'];
+                case 'UFL':
+                  return ['UFR', 'UBL', 'LFL'];
+                default:
+                  return [];
+              }
             default:
-              // case VP with VP isn't supported
               return [];
           }
         case 'FP':
@@ -495,8 +515,28 @@ export default {
                   // non existing side
                   return [];
               }
+            case 'FP':
+              switch (side) {
+                case 'LBL':
+                  return ['UBL', 'LFL', 'LBR'];
+                case 'LFR':
+                  return ['UFR', 'LFL', 'LBR'];
+                case 'LBR':
+                  return ['UBR', 'LFR', 'LBL'];
+                case 'LFL':
+                  return ['UFL', 'LFR', 'LBL'];
+                case 'UBL':
+                  return ['UFL', 'UBR', 'LBL'];
+                case 'UFR':
+                  return ['UFL', 'UBR', 'LFR'];
+                case 'UBR':
+                  return ['UFR', 'UBL', 'LBR'];
+                case 'UFL':
+                  return ['UFR', 'UBL', 'LFL'];
+                default:
+                  return [];
+              }
             default:
-              // case FP with FP isn't supported
               return [];
           }
         case 'VDP':
@@ -541,8 +581,28 @@ export default {
                   // non existing side
                   return [];
               }
+            case 'VDP':
+              switch (side) {
+                case 'LBL':
+                  return ['UBL', 'LFL', 'LBR'];
+                case 'LFR':
+                  return ['UFR', 'LFL', 'LBR'];
+                case 'LBR':
+                  return ['UBR', 'LFR', 'LBL'];
+                case 'LFL':
+                  return ['UFL', 'LFR', 'LBL'];
+                case 'UBL':
+                  return ['UFL', 'UBR', 'LBL'];
+                case 'UFR':
+                  return ['UFL', 'UBR', 'LFR'];
+                case 'UBR':
+                  return ['UFR', 'UBL', 'LBR'];
+                case 'UFL':
+                  return ['UFR', 'UBL', 'LFL'];
+                default:
+                  return [];
+              }
             default:
-              // case VDP on VDP is not supported
               return [];
           }
         default:

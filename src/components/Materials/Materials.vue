@@ -11,6 +11,12 @@
     <vgl-mesh-standard-material name="hover" color="#ADD9E6" />
     <vgl-mesh-lambert-material name="red" color="#FF0000" />
     <vgl-mesh-lambert-material name="green" color="#008000" />
+    <vgl-mesh-lambert-material name="blue" color="#2222FF" />
+    <vgl-mesh-lambert-material name="brown" color="#A52A2A" />
+    <vgl-mesh-lambert-material name="violet" color="#EE82EE" />
+    <vgl-mesh-lambert-material name="yellow" color="#D0D000" />
+    <vgl-mesh-lambert-material name="cyan" color="#44B7EB" />
+    <vgl-mesh-lambert-material name="pink" color="#FFB6C1" />
     <vgl-mesh-standard-material name="black" color="#000000" />
     <vgl-mesh-lambert-material name="selected" color="#4c8fc8" :opacity="0.8" :transparent="true" />
     <vgl-mesh-standard-material name="plane" :opacity="0.5" :transparent="true" />

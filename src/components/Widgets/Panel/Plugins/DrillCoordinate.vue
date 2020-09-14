@@ -155,23 +155,6 @@ export default {
     },
   },
   methods: {
-    stringToVector(position) {
-      const [x, y, z] = position.split(' ').map(v => parseInt(v, 10));
-      return new Vector3(x, y, z);
-    },
-    vectorToString(position) {
-      return `${position.x} ${position.y} ${position.z}`;
-    },
-    move(name, position, vertex, magnetism) {
-      // resize: name is the selected arrow name (1-1_dimension_arrow_upper)
-      // resize: position is the mouse position while dragging
-      const direction = name.split('_').pop();
-      if (vertex && magnetism) {
-        this.moveLogic(direction, vertex);
-      } else {
-        this.moveLogic(direction, position);
-      }
-    },
     moveLogic(direction, position) {
       let distance = 0;
       this.selectedArrow = direction;
@@ -230,47 +213,8 @@ export default {
 
       return inputField;
     },
-    updateStyle() {
-      this.inputElement.style.display = this.selectedArrow ? 'unset' : 'none';
-      this.inputElement.value = this.selectedArrow ? this.inputElement.value : '0';
-      const vertPosition = this.drillCenterPosition;
-
-      if (this.selectedArrow) this.inputElement.focus();
-      const inputPosition = new Vector3(
-        vertPosition.x,
-        vertPosition.y,
-        vertPosition.z,
-      );
-
-      switch (this.selectedArrow) {
-        case 'x':
-          inputPosition.x += this.arrowLength;
-          break;
-        case '-x':
-          inputPosition.x -= this.arrowLength;
-          break;
-        case 'y':
-          inputPosition.y += this.arrowLength;
-          break;
-        case '-y':
-          inputPosition.y -= this.arrowLength;
-          break;
-        case 'z':
-          inputPosition.z += this.arrowLength;
-          break;
-        case '-z':
-          inputPosition.z -= this.arrowLength;
-          break;
-        default:
-          break;
-      }
-
-      const vectorTop2D = this.projectVectorTo2D(inputPosition.x, inputPosition.y, inputPosition.z);
-      const rect = this.domElement.getBoundingClientRect();
-      vectorTop2D.x = Math.max(30, Math.min(vectorTop2D.x, rect.width - 200));
-      vectorTop2D.y = Math.max(30, Math.min(vectorTop2D.y, rect.height - 50));
-      this.inputElement.style.top = `${vectorTop2D.y}px`;
-      this.inputElement.style.left = `${vectorTop2D.x}px`;
+    vertPosition() {
+      return this.drillCenterPosition;
     },
   },
 };

@@ -15,25 +15,68 @@
       </el-form-item>
     </el-form>
     <el-form :model="newConnection" v-if="newConnection">
-      <el-form-item label="Mode de fixation">
-        <el-container>
-          <el-col :offset="3">
-            <el-row v-if="isVisible('undefined')"><el-radio v-model="newConnection.type" label="undefined" >Indéfini</el-radio></el-row>
-            <el-row v-if="isVisible(undefined)"><el-radio v-model="newConnection.type" label="default">Tourillon+excentrique</el-radio></el-row>
-            <el-row v-if="isVisible('rafix')"><el-radio v-model="newConnection.type" label="rafix">Rafix</el-radio></el-row>
-            <el-row v-if="isVisible('free')"><el-radio v-model="newConnection.type" label="free">Pas de fixation</el-radio></el-row>
-            <el-row v-if="isVisible('wooddowels')"><el-radio v-model="newConnection.type" label="wooddowels">Tourillons seuls</el-radio></el-row>
-            <el-row v-if="isVisible('holeline32')"><el-radio v-model="newConnection.type" label="holeline32">Taquet tous les 32mm</el-radio></el-row>
-            <el-row v-if="isVisible('adj40')"><el-radio v-model="newConnection.type" label="adj40">Taquet 3 positions</el-radio></el-row>
-            <el-row v-if="isVisible('hdfgrove')"><el-radio v-model="newConnection.type" label="hdfgrove">Feuillure pour fond 4mm</el-radio></el-row>
-            <el-row v-if="isVisible('hinged')"><el-radio v-model="newConnection.type" label="hinged">Porte</el-radio></el-row>
-          </el-col>
-        </el-container>
-      </el-form-item>
-      <el-form-item v-if="newConnection.type == 'default' || newConnection.type == 'rafix'" label="Placement des excentriques">
-        <el-radio v-model="newConnection.p2side" :label="1">Face 1</el-radio>
-        <el-radio v-model="newConnection.p2side" :label="2">Face 2</el-radio>
-      </el-form-item>
+      <label>Mode de fixation</label>
+      <el-row v-if="isVisible('undefined') || isVisible('free') || isVisible('hdfgrove')" class="form-row">
+        <el-col class="form-label" style="opacity: 0">
+          Normal
+        </el-col>
+        <el-col :offset="1">
+          <el-row v-if="isVisible('undefined')"><el-radio v-model="newConnection.type" label="undefined" >Indéfini</el-radio></el-row>
+          <el-row v-if="isVisible('free')"><el-radio v-model="newConnection.type" label="free">Pas de fixation</el-radio></el-row>
+          <el-row v-if="isVisible('hdfgrove')"><el-radio v-model="newConnection.type" label="hdfgrove">Feuillure pour fond 4mm</el-radio></el-row>
+        </el-col>
+      </el-row>
+      <el-row v-if="isVisible(undefined) || isVisible('rafix') || isVisible('wooddowels')" class="form-row">
+        <el-col class="form-label">
+          FIXE
+        </el-col>
+        <el-col :offset="1">
+          <el-row v-if="isVisible(undefined)">
+            <el-radio v-model="newConnection.type" label="default">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Tourillon+excentrique
+            </el-radio>
+          </el-row>
+          <el-row v-if="isVisible('rafix')">
+            <el-radio v-model="newConnection.type" label="rafix">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Rafix
+            </el-radio>
+          </el-row>
+          <el-row v-if="isVisible('wooddowels')">
+            <el-radio v-model="newConnection.type" label="wooddowels">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Tourillons seuls
+            </el-radio>
+          </el-row>
+        </el-col>
+      </el-row>
+      <el-row v-if="isVisible('hinged') || isVisible('adj40') || isVisible('holeline32')" class="form-row">
+        <el-col class="form-label">
+          MOBILE
+        </el-col>
+        <el-col :offset="1">
+          <el-row v-if="isVisible('hinged')">
+            <el-radio v-model="newConnection.type" label="hinged">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Porte
+            </el-radio>
+          </el-row>
+          <el-row v-if="isVisible('adj40')">
+            <el-radio v-model="newConnection.type" label="adj40">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Taquet 3 positions
+            </el-radio>
+          </el-row>
+          <el-row v-if="isVisible('holeline32')">
+            <el-radio v-model="newConnection.type" label="holeline32">
+              <img src="../../../../../assets/images/excentrique.png" alt="" class="radio-img"/>Taquet tous les 32mm
+            </el-radio>
+          </el-row>
+        </el-col>
+      </el-row>
+      <el-row v-if="newConnection.type == 'default' || newConnection.type == 'rafix'">
+        <el-col><label>Placement des excentriques</label></el-col>
+        <el-col :offset="2">
+          <el-radio v-model="newConnection.p2side" :label="1">Face 1</el-radio>
+          <el-radio v-model="newConnection.p2side" :label="2">Face 2</el-radio>
+        </el-col>
+      </el-row>
     </el-form>
     <div slot="footer">
       <el-button @click="unselect()">Annuler</el-button>
@@ -177,5 +220,29 @@ export default {
   }
   .overlap-select {
     background: white;
+  }
+  .form-label {
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    padding-left: 5px;
+    padding-right: 5px;
+    display: flex;
+    justify-content: center;
+    outline: lightgray solid 1px;
+  }
+  .form-row {
+    margin-left: 60px;
+    padding: 5px;
+    display: flex;
+  }
+  .el-col-24 {
+    width: auto;
+  }
+  .label {
+    margin: 5px;
+  }
+  .radio-img {
+    width: 40px;
+    margin-right: 10px
   }
 </style>

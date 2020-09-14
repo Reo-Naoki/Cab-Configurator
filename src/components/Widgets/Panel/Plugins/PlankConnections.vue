@@ -81,6 +81,20 @@ export default {
             return { ...c, material: 'red' };
           case 'free':
             return { ...c, material: 'black' };
+          case undefined:
+            return { ...c, material: 'green' };
+          case 'hdfgrove':
+            return { ...c, material: 'blue' };
+          case 'rafix':
+            return { ...c, material: 'brown' };
+          case 'wooddowels':
+            return { ...c, material: 'violet' };
+          case 'hinged':
+            return { ...c, material: 'yellow' };
+          case 'adj40':
+            return { ...c, material: 'cyan' };
+          case 'holeline32':
+            return { ...c, material: 'pink' };
           default:
             return { ...c, material: 'green' };
         }

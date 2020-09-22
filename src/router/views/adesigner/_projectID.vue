@@ -38,8 +38,8 @@ export default {
       this.$store.commit('User/setCurrentProjectID', this.projectID);
       try {
         const response = await callDajax('getrlistfromprojectid', { project_id: this.projectID });
-        const json = await response.json();
-        this.data = JSON.parse(json.serverresult).data;
+        const json = JSON.parse(response.data.serverresult) || { data: {} };
+        this.data = json.data;
       } catch (e) {
         console.error(e);
         MessageBox.alert('Impossible de charger le projet, contactez nous si le problème persiste.', {

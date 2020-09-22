@@ -135,7 +135,13 @@ const getters = {
       return newPanel;
     });
 
-    groups.forEach(group => newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => panel.id === list.id)) }));
+    groups.forEach((group) => {
+      newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => panel.id === list.id.split('-')[0])) });
+      group.rlist.forEach((list) => {
+        const panelIndex = newPanels.findIndex(panel => panel.id === list.id.split('-')[0]);
+        if (panelIndex > -1) newPanels.splice(panelIndex, 1);
+      });
+    });
 
     const { materials } = rootState.materials;
     return {
@@ -192,8 +198,24 @@ const mutations = {
             groupChildCount += 1;
           } else {
             const panelIndex = s.panels.findIndex(panel => panel.id === list.id.split('-')[0]);
-            s.panels[panelIndex].groupName = p.name;
-            s.panels[panelIndex].groupType = p.ptype;
+            if (panelIndex > -1) {
+              s.panels[panelIndex].groupName = p.name;
+              s.panels[panelIndex].groupType = p.ptype;
+            } else {
+              const resizable = !list.ptype.includes('Hard');
+              const points = list.points ? list.points.map(point => [Math.round(point[0] * 10) / 10, Math.round(point[1] * 10) / 10]) : null;
+              s.panels.push({
+                ...list,
+                id: list.id.split('-')[0],
+                points: resizable ? (points || [[0, 0], [list.x, 0], [list.x, list.y], [0, list.y]]) : null,
+                ptype: resizable ? list.ptype : list.ptype.split('-')[1],
+                works: list.works || [],
+                layer: list.layer ? list.layer : 'Structure',
+                resizable,
+                groupName: p.name,
+                groupType: p.ptype,
+              });
+            }
             panelChildCount += 1;
           }
         });

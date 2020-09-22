@@ -12,7 +12,7 @@
     <vgl-mesh-lambert-material name="red" color="#FF0000" />
     <vgl-mesh-lambert-material name="green" color="#008000" />
     <vgl-mesh-lambert-material name="blue" color="#2222FF" />
-    <vgl-mesh-lambert-material name="brown" color="#A52A2A" />
+    <vgl-mesh-lambert-material name="purple" color="#8E44AD" />
     <vgl-mesh-lambert-material name="violet" color="#EE82EE" />
     <vgl-mesh-lambert-material name="yellow" color="#D0D000" />
     <vgl-mesh-lambert-material name="cyan" color="#44B7EB" />

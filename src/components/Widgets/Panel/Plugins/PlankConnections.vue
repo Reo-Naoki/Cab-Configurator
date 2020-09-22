@@ -86,7 +86,7 @@ export default {
           case 'hdfgrove':
             return { ...c, material: 'blue' };
           case 'rafix':
-            return { ...c, material: 'brown' };
+            return { ...c, material: 'purple' };
           case 'wooddowels':
             return { ...c, material: 'violet' };
           case 'hinged':

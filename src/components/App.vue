@@ -19,8 +19,8 @@
               color-grid="#cfcfcf" />
           </vgl-scene>
         </vgl-renderer>
-        <DisplayOptions :layers="getLayers"/>
-        <ToolBar />
+        <DisplayOptions/>
+        <ToolBar :layers="getLayers"/>
         <ButtonPlus />
       </div>
     </div>

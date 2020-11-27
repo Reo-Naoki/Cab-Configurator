@@ -25,3 +25,9 @@ export default {
   },
 };
 </script>
+
+<style>
+  .displayer-image {
+    width: 45px;
+  }
+</style>

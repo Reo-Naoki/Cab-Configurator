@@ -22,6 +22,11 @@ const state = {
   panelVisibleMode: 'Normal',
   enableCreateDrill: false,
   enableLayerManager: false,
+  enableLayerDisplayer: false,
+  enableGroupArranger: false,
+  enableEdgeAutoApplier: false,
+  firstLayoutGroup: null,
+  secondLayoutGroup: null,
   rulerStartPoint: new Vector3(0, 0, 0),
   rulerEndPoint: new Vector3(0, 0, 0),
   rulerPointStep: 0,
@@ -47,6 +52,9 @@ function initEnableState() {
   state.panelVisibleMode = 'Normal';
   state.enableCreateDrill = false;
   state.enableLayerManager = false;
+  state.enableLayerDisplayer = false;
+  state.enableGroupArranger = false;
+  state.enableEdgeAutoApplier = false;
 }
 
 function setRulerEndPoint(point) {
@@ -77,8 +85,7 @@ const getters = {
     const { panels } = s;
     const { groups } = s;
 
-    const newPanels = panels.map((p) => {
-      const panel = p;
+    const newPanels = panels.map((panel) => {
       const { resizable, points } = panel;
       const newPanel = {
         x: panel.x,
@@ -97,6 +104,27 @@ const getters = {
       if (panel.works.length > 0) {
         newPanel.works = panel.works.map((work) => {
           const newWork = work;
+
+          const xMax = newPanel.ptype === 'FP' ? newPanel.y : newPanel.x;
+          const yMax = newPanel.ptype === 'FP' ? newPanel.x : newPanel.y;
+
+          if (work.x === 0 || work.x === xMax || work.y === 0 || work.y === yMax) {
+            newWork.wt = 'HH';
+          } else if (newWork.wt === 'HH') {
+            newWork.wt = 'H';
+          }
+
+          if (newWork.wt === 'HH') {
+            if (newWork.x === 0) {
+              newWork.dir = 'XP';
+            } else if (newWork.x === newPanel.x) {
+              newWork.dir = 'XM';
+            } else if (newWork.y === 0) {
+              newWork.dir = 'YP';
+            } else if (newWork.y === newPanel.y) {
+              newWork.dir = 'YM';
+            }
+          }
 
           if (newWork.di > 0) {
             delete newWork.sx;
@@ -122,7 +150,7 @@ const getters = {
         if (points.length !== 4) {
           newPanel.points = points;
         } else {
-          const corners = [[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]];
+          const corners = [[0, 0], [panel.x, 0], [panel.x, panel.y], [0, panel.y]];
           for (let i = 0; i < points.length; i += 1) {
             if (points[i][0] !== corners[i][0] || points[i][1] !== corners[i][1]) {
               newPanel.points = points;
@@ -136,9 +164,9 @@ const getters = {
     });
 
     groups.forEach((group) => {
-      newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => panel.id === list.id.split('-')[0])) });
+      newPanels.push({ ...group, rlist: group.rlist.map(list => newPanels.find(panel => list.id && panel.id === list.id.split('-')[0])) });
       group.rlist.forEach((list) => {
-        const panelIndex = newPanels.findIndex(panel => panel.id === list.id.split('-')[0]);
+        const panelIndex = newPanels.findIndex(panel => list.id && panel.id === list.id.split('-')[0]);
         if (panelIndex > -1) newPanels.splice(panelIndex, 1);
       });
     });
@@ -182,7 +210,7 @@ const mutations = {
     });
     panels.forEach((p) => {
       if (p.ptype.startsWith('group_')) {
-        s.groups.push({ ...p, resizable: true });
+        s.groups.push({ ...p, rlist: p.rlist.filter(list => list), resizable: true });
       }
     });
     panels.forEach((p) => {
@@ -191,12 +219,12 @@ const mutations = {
         let panelChildCount = 0;
 
         p.rlist.forEach((list) => {
-          if (list.ptype.startsWith('group_')) {
+          if (list && list.ptype.startsWith('group_')) {
             const groupIndex = s.groups.findIndex(group => group.name === list.name);
             s.groups[groupIndex].groupName = p.name;
             s.groups[groupIndex].groupType = p.ptype;
             groupChildCount += 1;
-          } else {
+          } else if (list) {
             const panelIndex = s.panels.findIndex(panel => panel.id === list.id.split('-')[0]);
             if (panelIndex > -1) {
               s.panels[panelIndex].groupName = p.name;
@@ -334,6 +362,28 @@ const mutations = {
     else if (s.panelVisibleMode === 'Self Hidden') s.panelVisibleMode = 'Others Hidden';
     else if (s.panelVisibleMode === 'Others Hidden') s.panelVisibleMode = 'All Hidden';
     else s.panelVisibleMode = 'Normal';
+  },
+  enableGroupArranger(s, isEnable = true) {
+    initEnableState();
+    s.enableGroupArranger = isEnable;
+    if (!isEnable) {
+      s.firstLayoutGroup = null;
+      s.secondLayoutGroup = null;
+    }
+  },
+  enableEdgeAutoApplier(s, isEnable = true) {
+    initEnableState();
+    s.enableEdgeAutoApplier = isEnable;
+  },
+  setFirstLayoutGroup(s, group = null) {
+    s.firstLayoutGroup = group;
+  },
+  setSecondLayoutGroup(s, group = null) {
+    s.secondLayoutGroup = group;
+  },
+  changeLayerDisplayerMode(s, isEnable = true) {
+    initEnableState();
+    s.enableLayerDisplayer = isEnable;
   },
   enableCreateDrill(s, isEnable = true) {
     s.enableCreateDrill = isEnable;

@@ -56,7 +56,7 @@
           <el-link icon="el-icon-refresh" @click.once="updatePrice()" :underline="false">Mettre à jour le prix</el-link>
         </div>
       </div>
-      <div class="and-margin-icon" @click="addToCart">
+      <div v-if="showAddToCardMode" class="and-margin-icon" @click="addToCart">
         <div class="eel-button basket-icon">
           <div class="fa-basket-icon"></div>
           <div>Ajouter au panier</div>
@@ -99,6 +99,14 @@ export default {
     ...mapState('User', {
       userID: 'id',
     }),
+    addToCartMode() {
+      if (!this.$route.query.mode) return -1;
+      return this.$route.query.mode[5];
+    },
+    showAddToCardMode() {
+      if (this.addToCartMode === '1') return true;
+      return false;
+    },
   },
   methods: {
     ...mapActions('Panels', [

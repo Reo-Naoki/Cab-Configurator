@@ -72,6 +72,7 @@
     "currentproject": "Current project",
     "saveas": "Save as",
     "projectname": "Give a name to your project",
+    "projectid": "Project ID",
     "open": "Open",
     "import": "Import",
     "noproject": "You do not have any project saved yet",

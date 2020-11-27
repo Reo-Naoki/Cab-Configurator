@@ -116,7 +116,7 @@
 
     <PlankVertices ref="vertices" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" :point-angles="shapePointAngles" :thick="thick" :works="drillWorks" :drill-positions="drillCenterPositions" />
     <PlankStickers :plank-position="position" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showStickers" />
-    <PlankEdges :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" v-if="showEdgesSelector" />
+    <PlankEdges :plank-position="fixedPosition" :plank-dimension="dimensionsByType" :plank-type="ptype" :plank-edges.sync="edges" :plank-points.sync="shapePoints" :x="x" :y="y" v-if="showEdgesSelector" />
     <PlankCoordinate ref="coordinate" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" v-if="showCoordinateArrows" />
     <PlankDimensions ref="dimensions" :plank-position.sync="fixedPosition" :plank-dimension.sync="dimensionsByType" :plank-type="ptype" :plank-name="id" :plank-points.sync="shapePoints" v-if="showDimensionArrows" />
     <PlankConnections ref="connections" :plank-position="fixedPosition" :plank-i-d="id" :connections="relatedConnections" v-if="showConnections" />
@@ -274,6 +274,7 @@ export default {
           if (selectedObject.isConnectionBubble && (name.split('_')[1] === this.id || name.split('_')[2] === this.id)) return true;
         }
         if (selectedObject.name === this.id) return true;
+        if (selectedObject.name.split('_')[0] === this.id) return true;
       }
       return false;
     },
@@ -715,6 +716,60 @@ export default {
       else if (selectedObject.isDimension && isSelected) this.$refs.dimensions.select(selectedObject);
       else if (selectedObject.isCoordinate) this.$refs.coordinate.select(null);
       else if (selectedObject.isDimension) this.$refs.dimensions.select(null);
+    },
+    autoEdgeApply(applyMode) {
+      if (!this.edges) return;
+
+      let newEdges = this.edges.split('-');
+      if (applyMode === 'all') {
+        newEdges = newEdges.map(() => '0');
+      }
+
+      const panelConnections = this.relatedConnections.filter(c => c.p2.toString() === this.id);
+      newEdges = newEdges.map((edge, index) => {
+        if (edge === '0' && !this.findEdgeConnection(panelConnections, index)) {
+          return this.isDoorPanel ? '20' : '6';
+        }
+        return edge;
+      });
+
+      this.edges = newEdges.join('-');
+    },
+    findEdgeConnection(connections, index) {
+      const {
+        position,
+        fixedPosition,
+        dimensionsByType,
+      } = this;
+
+      if (this.ptype === 'FP') {
+        return connections.find((c) => {
+          if (index === 0 && c.center.x === position.x && c.center.y === fixedPosition.y && c.center.z === fixedPosition.z) return true;
+          if (index === 1 && c.center.x === fixedPosition.x && c.center.y === fixedPosition.y && c.center.z === position.z + dimensionsByType.depth) return true;
+          if (index === 2 && c.center.x === position.x + dimensionsByType.width && c.center.y === fixedPosition.y && c.center.z === fixedPosition.z) return true;
+          if (index === 3 && c.center.x === fixedPosition.x && c.center.y === fixedPosition.y && c.center.z === position.z) return true;
+          return false;
+        });
+      }
+      if (this.ptype === 'VP') {
+        return connections.find((c) => {
+          if (index === 0 && c.center.x === fixedPosition.x && c.center.y === position.y && c.center.z === fixedPosition.z) return true;
+          if (index === 1 && c.center.x === position.x + dimensionsByType.width && c.center.y === fixedPosition.y && c.center.z === fixedPosition.z) return true;
+          if (index === 2 && c.center.x === fixedPosition.x && c.center.y === position.y + dimensionsByType.height && c.center.z === fixedPosition.z) return true;
+          if (index === 3 && c.center.x === position.x && c.center.y === fixedPosition.y && c.center.z === fixedPosition.z) return true;
+          return false;
+        });
+      }
+      if (this.ptype === 'VDP') {
+        return connections.find((c) => {
+          if (index === 0 && c.center.x === fixedPosition.x && c.center.y === position.y && c.center.z === fixedPosition.z) return true;
+          if (index === 1 && c.center.x === fixedPosition.x && c.center.y === fixedPosition.y && c.center.z === position.z + dimensionsByType.depth) return true;
+          if (index === 2 && c.center.x === fixedPosition.x && c.center.y === position.y + dimensionsByType.height && c.center.z === fixedPosition.z) return true;
+          if (index === 3 && c.center.x === fixedPosition.x && c.center.y === fixedPosition.y && c.center.z === position.z) return true;
+          return false;
+        });
+      }
+      return null;
     },
     setCollide(value) {
       this.collide = value;

@@ -783,7 +783,13 @@ export default {
 
         window.panels[plankName].shapePoints = shapePoints;
         window.panels[plankName].edges = edges.join('-');
-        this.$store.commit('Camera/selectObject3D', { object3d: { ...window.panels[plankName], name: plankName, isPanel: true } });
+        this.$store.commit('Camera/selectObject3D', {
+          object3d: {
+            name: `${this.plankName}_vertex_SHAPE${minIndex}M`,
+            isShapeVertex: true,
+          },
+        });
+        EventBus.$emit('save');
       }
     },
   },

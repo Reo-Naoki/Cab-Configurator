@@ -56,6 +56,9 @@ export default {
       'enableMeasure',
       'enableShapeEdit',
       'enableDrillEdit',
+      'enableGroupArranger',
+      'firstLayoutGroup',
+      'secondLayoutGroup',
       'rulerStartPoint',
       'rulerEndPoint',
       'rulerPointStep',
@@ -73,7 +76,10 @@ export default {
     window.drillCoordinates = {};
     this.setStoreWatcher();
   },
-  mounted() { window.root = this.$refs.root; },
+  mounted() {
+    window.root = this.$refs.root;
+    window.connections = this.$refs.connections;
+  },
   beforeDestroy() {
     this.panelsMutationWatcher();
     this.panelsActionWatcher();
@@ -113,6 +119,7 @@ export default {
         }
         return;
       }
+
       if (this.enableDrillEdit) {
         this.$store.commit('Camera/selectObject3D', { object3d });
         if (object3d.isCoordinate) {
@@ -155,6 +162,16 @@ export default {
           }
         }
       }
+
+      if (this.enableGroupArranger) {
+        if (object3d.isGroup) {
+          if (this.firstLayoutGroup === null) this.$store.commit('Panels/setFirstLayoutGroup', object3d.index);
+          else if (this.secondLayoutGroup === null && this.firstLayoutGroup !== object3d.index) this.$store.commit('Panels/setSecondLayoutGroup', object3d.index);
+          this.$store.commit('Camera/selectObject3D', { object3d });
+        }
+        return;
+      }
+
       this.$store.commit('Camera/selectObject3D', { object3d });
 
       if (object3d.isPanel) {

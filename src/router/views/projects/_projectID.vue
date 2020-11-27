@@ -38,7 +38,16 @@ export default {
         const response = await callDajax('getprojectdata', { project_id: this.projectID });
         console.log('Response received');
         console.log(response);
-        this.data = JSON.parse(response.data.serverresult);
+        const json = JSON.parse(response.data.serverresult) || { data: {} };
+        if (json.error) {
+          MessageBox.alert(json.error, {
+            type: 'error',
+            title: 'Erreur',
+            confirmButtonText: 'Ok',
+          });
+        } else {
+          this.data = json.data;
+        }
       } catch (e) {
         console.error(e);
         MessageBox.alert('Impossible de charger le projet, contactez nous si le problème persiste.', {

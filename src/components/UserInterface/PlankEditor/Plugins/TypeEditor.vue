@@ -3,14 +3,17 @@
     <div class="title-menu-left"><h2 class="heading-menu">Orientation de la planche</h2></div>
     <div class="content-menu-left">
       <div class="flexbox-menu-left">
-        <div :class="{ 'children-orientation' : true, selected: panelType === 'FP'}" @click="panelType = 'FP'">
-          <img src="https://uploads-ssl.webflow.com/5d9d9d81e6b3b4240b6e8c53/5da96789a56f396431af0bed_plat.svg" alt="FlatPanel">
+        <label class="inline-block normal attribute wrapper-margin-tbauto margin-auto">
+          <img src="../../../../assets/images/PType.png" alt="" height="45px" style="vertical-align: sub;" />
+        </label>
+        <div :class="{ 'children-orientation' : true, selected: panelType === 'FP', 'typebtn': true}" @click="panelType = 'FP'">
+          <img src="../../../../assets/images/FP.png" alt="FlatPanel">
         </div>
-        <div :class="{ 'children-orientation' : true, selected: panelType === 'VDP'}" @click="panelType = 'VDP'">
-          <img src="https://uploads-ssl.webflow.com/5d9d9d81e6b3b4240b6e8c53/5da96789a56f393377af0bee_cote.svg" alt="Montant">
+        <div :class="{ 'children-orientation' : true, selected: panelType === 'VDP', 'typebtn': true}" @click="panelType = 'VDP'">
+          <img src="../../../../assets/images/VDP.png" alt="Montant">
         </div>
-        <div :class="{ 'children-orientation' : true, selected: panelType === 'VP'}" @click="panelType = 'VP'">
-          <img src="https://uploads-ssl.webflow.com/5d9d9d81e6b3b4240b6e8c53/5da96789a56f39d4ebaf0bef_carre%20face.svg" alt="VerticalPanel">
+        <div :class="{ 'children-orientation' : true, selected: panelType === 'VP', 'typebtn': true}" @click="panelType = 'VP'">
+          <img src="../../../../assets/images/VP.png" alt="VerticalPanel">
         </div>
       </div>
     </div>
@@ -31,10 +34,7 @@ export default {
     ]),
     selectedObject3DIndex() {
       if (!this.selectedObject3D) return -1;
-      if (this.selectedObject3D.object3d.isDimension || this.selectedObject3D.object3d.isCoordinate) {
-        return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name.split('_')[0]);
-      }
-      return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name);
+      return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name.split('_')[0]);
     },
     panel() {
       return this.panels[this.selectedObject3DIndex];
@@ -52,3 +52,19 @@ export default {
   },
 };
 </script>
+<style>
+  .margin-auto {
+    margin: auto;
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  .typebtn {
+    margin: auto !important;
+    width: 50px !important;
+    height: 50px !important;
+    padding: 1px !important;
+  }
+  .typebtn.selected {
+    background-color: lightgray !important;
+  }
+</style>

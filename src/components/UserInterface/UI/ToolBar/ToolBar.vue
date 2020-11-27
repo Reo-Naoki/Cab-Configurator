@@ -1,29 +1,27 @@
 <template>
   <div class="wrapper-switch">
     <RulerButton />
-    <ShapeEditButton />
-    <DrillEditButton />
-    <DuplicateButton />
-    <VisibilityButton />
+    <VisibilityButton :layers="layers"/>
+    <ArrangeButton />
+    <AutoEdgeButton />
   </div>
 </template>
 
 <script>
 
 import RulerButton from './Plugins/RulerButton';
-import ShapeEditButton from './Plugins/ShapeEditButton';
-import DrillEditButton from './Plugins/DrillEditButton';
-import DuplicateButton from './Plugins/DuplicateButton';
 import VisibilityButton from './Plugins/VisibilityButton';
+import ArrangeButton from './Plugins/ArrangeButton';
+import AutoEdgeButton from './Plugins/AutoEdgeButton';
 
 export default {
   name: 'ToolBar',
+  props: ['layers'],
   components: {
     RulerButton,
-    ShapeEditButton,
-    DrillEditButton,
-    DuplicateButton,
     VisibilityButton,
+    ArrangeButton,
+    AutoEdgeButton,
   },
 };
 </script>
@@ -38,13 +36,5 @@ export default {
     border-radius: 5px;
     width: auto;
     box-shadow: 1px 1px 2px 0 rgba(0, 0, 0, .1);
-  }
-  .wrapper-switch .wrapper-line :last-child {
-    float: right;
-  }
-  .toolbar-button {
-    padding: 2px;
-    background-color: #f0f0f0;
-    margin: 2px;
   }
 </style>

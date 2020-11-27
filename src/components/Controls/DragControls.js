@@ -40,6 +40,9 @@ export default {
       'enableDrillEdit',
       'enableCreatePoint',
       'enableCreateDrill',
+      'enableLayerDisplayer',
+      'enableGroupArranger',
+      'enableEdgeAutoApplier',
     ]),
     domElement() {
       return this.vglNamespace.renderers[0].inst.domElement;
@@ -64,13 +67,13 @@ export default {
       this.domElement.addEventListener('click', this.onDocumentMouseClick, false);
       this.domElement.addEventListener('auxclick', this.onDocumentRightMouseClick, false);
       this.domElement.addEventListener('wheel', this.onDocumentMouseWheel, false);
+      this.domElement.addEventListener('touchend', this.onDocumentTouchEnd, false);
 
       let appDiv = this.domElement;
       if (document.getElementById('content-3d')) appDiv = document.getElementById('content-3d');
 
       appDiv.addEventListener('mousemove', this.onDocumentMouseMove, false);
       appDiv.addEventListener('touchmove', this.onDocumentTouchMove, false);
-      appDiv.addEventListener('touchend', this.onDocumentTouchEnd, false);
     },
     deactivate() {
       this.domElement.removeEventListener('touchstart', this.onDocumentTouchStart, false);
@@ -78,13 +81,13 @@ export default {
       this.domElement.removeEventListener('click', this.onDocumentMouseClick, false);
       this.domElement.removeEventListener('auxclick', this.onDocumentRightMouseClick, false);
       this.domElement.removeEventListener('wheel', this.onDocumentMouseWheel, false);
+      this.domElement.removeEventListener('touchend', this.onDocumentTouchEnd, false);
 
       let appDiv = this.domElement;
       if (document.getElementById('content-3d')) appDiv = document.getElementById('content-3d');
 
       appDiv.removeEventListener('mousemove', this.onDocumentMouseMove, false);
       appDiv.removeEventListener('touchmove', this.onDocumentTouchMove, false);
-      appDiv.removeEventListener('touchend', this.onDocumentTouchEnd, false);
     },
     objects() {
       return Object.values(this.vglNamespace.object3ds)
@@ -132,7 +135,7 @@ export default {
       event.preventDefault();
 
       this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
-        this.selectedObject ? this.worldPosition.setFromMatrixPosition(this.selectedObject.matrixWorld) : new Vector3(0, 0, 0));
+        this.selectedObject && this.selectedObject.setFromMatrixPosition ? this.worldPosition.setFromMatrixPosition(this.selectedObject.matrixWorld) : new Vector3(0, 0, 0));
 
       if (this.enableMeasure) {
         let rulerPoint = null;
@@ -151,6 +154,8 @@ export default {
       this.prevMousePos.y = event.clientY;
       this.isDragging = true;
       this.$emit('hoveroff');
+      if (this.enableLayerDisplayer) this.$store.commit('Panels/changeLayerDisplayerMode', false);
+      if (this.enableEdgeAutoApplier) this.$store.commit('Panels/enableEdgeAutoApplier', false);
     },
     onDocumentMouseMove(event) {
       event.preventDefault();
@@ -330,6 +335,11 @@ export default {
           if (this.selectedObject3D) this.selectedObject = this.selectedObject3D.object3d;
           this.$emit('dragstart', this.selected);
 
+          if (this.enableGroupArranger) {
+            this.selected = null;
+            return;
+          }
+
           this.setOffset(this.selectedObject3D.object3d.name);
 
           if (this.selected.isDimension || this.selected.isCoordinate) {
@@ -389,55 +399,44 @@ export default {
     },
     onDocumentTouchMove(event) {
       event.preventDefault();
-      // eslint-disable-next-line no-param-reassign
-      [event] = event.changedTouches;
 
-      this.setRaycaster(event);
-
-      if (this.selected && this.enable && this.enableMoving) {
-        if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
-          const roundPosition = this.roundPosition();
-          this.$emit('dragmove', {
-            selected: this.selected,
-            position: roundPosition,
-          });
-        }
+      if (event.touches.length === 1) {
+        const mouseEvent = this.toTouchEvent('mousemove', event.touches.item(0));
+        this.onDocumentMouseMove(mouseEvent);
       }
     },
     onDocumentTouchStart(event) {
       event.preventDefault();
-      // eslint-disable-next-line no-param-reassign
-      [event] = event.changedTouches;
 
-      this.setRaycaster(event);
-      const intersects = this.raycaster.intersectObjects(this.objects(), true);
-
-      if (intersects.length > 0) {
-        this.selected = intersects[0].object;
-
-        this.plane.setFromNormalAndCoplanarPoint(this.cameraInst.getWorldDirection(this.plane.normal),
-          this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
-
-        if (this.raycaster.ray.intersectPlane(this.plane, this.intersection)) {
-          const matrixWorld = this.selected.parent != null
-            ? this.selected.parent.matrixWorld
-            : this.selected.matrixWorld;
-          this.inverseMatrix.getInverse(matrixWorld);
-          this.offset.copy(this.intersection).sub(this.worldPosition.setFromMatrixPosition(this.selected.matrixWorld));
+      if (event.touches.length === 1) {
+        this.setRaycaster(event.touches.item(0));
+        const intersects = this.raycaster.intersectObjects(this.objects(), true);
+        let mouseEvent;
+        if (intersects.length > 0 && this.selectedObject3D) {
+          mouseEvent = this.toTouchEvent('click', event.touches.item(0));
+        } else {
+          mouseEvent = this.toTouchEvent('mousedown', event.touches.item(0));
         }
-        if (this.enableMoving) this.domElement.style.cursor = 'move';
-        this.$emit('dragstart', this.selected);
+        this.onDocumentMouseDown(mouseEvent);
+        if (intersects.length > 0 && this.selectedObject3D) this.$emit('hoveron');
       }
     },
     onDocumentTouchEnd(event) {
       event.preventDefault();
 
-      if (this.selected) {
-        this.$emit('dragend', this.selected);
-        this.selected = null;
+      if (event.touches.length === 0) {
+        const mouseEvent = this.toTouchEvent('click', event.changedTouches.item(0));
+        this.onDocumentMouseClick(mouseEvent);
       }
-
-      this.domElement.style.cursor = 'auto';
+    },
+    toTouchEvent(type, touch) {
+      return new MouseEvent(type, {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
     },
     onDocumentKeyDown(event) {
       event.preventDefault();

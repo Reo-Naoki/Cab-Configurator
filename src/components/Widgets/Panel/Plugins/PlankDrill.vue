@@ -320,7 +320,7 @@ export default {
         wt: dir ? 'HH' : 'H',
         x,
         y,
-        di: 5.0,
+        di: dir ? this.hhDiameters[this.hhDiameters.length - 1] : this.hDiameters[this.hDiameters.length - 1],
         dp: 5,
       };
       if (dir) {

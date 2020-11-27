@@ -1,76 +1,99 @@
 <template>
   <div v-if="selectedObject3D">
     <div class="wrapper-name-panel">
-      <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
-      <div v-bind:class="[`round-icon-2${enableCreateDrill ? '' : ' medium-emphasis'}`]" @click="createDrill()" title="Create Drill">
-        <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-             preserveAspectRatio="xMidYMid meet" viewBox="3 2 20 20">
-          <circle cx="11" cy="13" r="3" :fill="`${enableCreateDrill ? '#ffffff' : '#aaaaaa'}`" />
-          <path d="M19 5h3v2h-3v3h-2V7h-3V5h3V2h2v3m-2 14v-6h2v8H3V5h8v2H5v12h12z" :fill="`${enableCreateDrill ? '#ffffff' : '#aaaaaa'}`" />
-        </svg>
-      </div>
-      <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deleteDrill() : null" title="Delete Drill">
-        <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-             preserveAspectRatio="xMidYMid meet" viewBox="2 2 20 20">
-          <path d="m16.981,7.0673l0.0119,5.92826l2,0l0,-7.98119l-16,0l0,15.96237l8,0l0,-1.9953l-6,0l0,-11.97177" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
-          <circle cx="11" cy="13" r="3" :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
-          <path d="m19.44341,20.18835l3,0l0,-1.99529l-3,0l0,-2.99295l-2,0l0,2.99295l-3,0l0,1.99529l3,0l0,2.99295l2,0l0,-2.99295m-8,0"
-                transform="rotate(45 16.94340896606446,19.190700531005856) " :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`" />
-        </svg>
+      <div v-bind:class="[`round-icon-2 ${enableCreateDrill ? '' : 'medium-emphasis'} createbtn`]" @click="createDrill()" title="Create Drill">
+        <img src="../../../../assets/images/CreateDrill.png" alt="" width="24" height="24" :style="`vertical-align: sub; opacity: ${enableCreateDrill ? 0.7 : 0.5};`" />
       </div>
     </div>
-    <div>
+    <div v-if="enableCreateDrill" style="width: 90%; margin: auto;">
+      <label style="color: darkgray; text-align: -webkit-center;">Click on the panel at the location you want to drill</label>
+    </div>
+    <div v-if="selectedDrillIndex > -1">
       <div class="title-menu-left"><h2 class="heading-menu">Drill</h2></div>
       <div class="content-menu-left">
-        <div class="wrapper-position">
-          <label class="inline-block normal attribute">Position:</label>
-          <div class="wrapper-position">
-            <label v-if="isPositionVisible.x" class="inline-block normal label">X:</label>
-            <input v-if="isPositionVisible.x" class="dimension-box position w-input" v-model.number="x" @keydown="applyX" @blur="applyX"/>
-            <label v-if="isPositionVisible.y" class="inline-block normal label">Y:</label>
-            <input v-if="isPositionVisible.y" class="dimension-box position w-input" v-model.number="y" @keydown="applyY" @blur="applyY"/>
-            <label v-if="isPositionVisible.z" class="inline-block normal label">Z:</label>
-            <input v-if="isPositionVisible.z" class="dimension-box position w-input" v-model.number="z" @keydown="applyZ" @blur="applyZ"/>
+        <div class="wrapper-bottom-margin">
+          <div style="display: flex; align-items: center; width: 50%; margin: auto; margin-left: 55px;">
+            <input v-if="positionView.up === 'x'" class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="x" @keydown="applyX" @blur="applyX"/>
+            <input v-else-if="positionView.up === 'y'" class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="y" @keydown="applyY" @blur="applyY"/>
+            <input v-else class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="z" @keydown="applyZ" @blur="applyZ"/>
+            <label style="font-weight: normal; margin: auto;">mm</label>
+          </div>
+          <div style="display: flex; align-items: center; width: 70%; margin-left: auto;">
+            <img src="../../../../assets/images/DrillXY.png" alt="" height="64px" style="vertical-align: sub; opacity: 0.8;" />
+            <input v-if="positionView.right === 'x'" class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="x" @keydown="applyX" @blur="applyX"/>
+            <input v-else-if="positionView.right === 'y'" class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="y" @keydown="applyY" @blur="applyY"/>
+            <input v-else class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;"
+                   v-model.number="z" @keydown="applyZ" @blur="applyZ"/>
+            <label style="font-weight: normal; margin: auto;">mm</label>
           </div>
         </div>
-        <div v-if="di > 0" class="wrapper-position">
-          <label class="inline-block normal attribute">Diameter:</label>
-          <div class="diameter">
-            <select class="dimension-select w-select diameter-select" v-model.number="di">
-              <option v-for="(diameter, index) in diameterList" :key="`list${index}`" :value="diameter">{{diameter}} mm</option>
+        <div v-if="wt !== 'HH'" class="flexbox-menu-left wrapper-bottom-margin">
+          <div :class="{ 'children-orientation' : true, selected: di > 0}" @click="changeDrillShape('round')">
+            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 16 16">
+              <g fill="#444444"><circle cx="8" cy="8" r="8"/></g>
+            </svg>
+          </div>
+          <div :class="{ 'children-orientation' : true, selected: !di || di === 0}" @click="changeDrillShape('rect')">
+            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
+                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+              <rect width="24" height="24" x="0" y="0" class="uim-primary" rx="5" fill="#444444"/>
+            </svg>
+          </div>
+        </div>
+        <div v-if="di > 0" class="wrapper-position wrapper-bottom-margin">
+          <label class="inline-block normal attribute wrapper-margin-tbauto">
+            <img src="../../../../assets/images/DrillDI.png" alt="" height="45px" style="vertical-align: sub; opacity: 0.8;" />
+          </label>
+          <div class="diameter wrapper-margin-tbauto">
+            <select class="dimension-select w-select diameter-select" v-model.number="di" :style="`color: ${isChromeBrowser ? '#000000' : 'transparent'};`">
+              <option v-for="(diameter, index) in diameterList" :key="`list${index}`" :value="diameter" style="color: #000000;">{{diameter}} mm</option>
             </select>
-            <input class="diameter-input" type="text" name="format" v-model.number="inputDI" @keydown="applyDI" @blur="applyDI" :readonly="!this[`${wt.toLowerCase()}DiFreeRange`]" />
+            <input v-if="wt !== 'HH'" class="diameter-input" type="text" name="format" v-model.number="inputDI" :style="`background-color: ${isChromeBrowser ? '#f3f3f3' : 'transparent'};`"
+              @keydown="applyDI" @blur="applyDI" :readonly="!this[`${wt.toLowerCase()}DiFreeRange`]" />
           </div>
         </div>
-        <div v-else class="wrapper-position">
-          <label class="inline-block normal attribute">Size:</label>
-          <div class="wrapper-position">
-            <label class="inline-block normal label">SX:</label>
-            <input class="dimension-box position w-input" v-model.number="sx" @keydown="applySX" @blur="applySX"/>
-            <label class="inline-block normal label">SY:</label>
-            <input class="dimension-box position w-input" v-model.number="sy" @keydown="applySY" @blur="applySY"/>
+        <div v-else class="wrapper-bottom-margin">
+          <div style="display: flex; align-items: center; width: 50%; margin: auto; margin-left: 55px;">
+            <input class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;" v-model.number="sx" @keydown="applySX" @blur="applySX"/>
+            <label style="font-weight: normal; margin: auto;">mm</label>
+          </div>
+          <div style="display: flex; align-items: center; width: 70%; margin-left: auto;">
+            <img src="../../../../assets/images/DrillSXY.png" alt="" height="64px" style="vertical-align: sub; opacity: 0.8;" />
+            <input class="dimension-box position w-input" style="margin-bottom: auto; margin-top: auto;" v-model.number="sy" @keydown="applySY" @blur="applySY"/>
+            <label style="font-weight: normal; margin: auto;">mm</label>
           </div>
         </div>
-        <div v-if="isDepthVisible" class="wrapper-position">
-          <label class="inline-block normal attribute">Depth:</label>
-          <input class="dimension-box position w-input" v-model.number="dp" @keydown="applyDP" @blur="applyDP"/>
+        <div v-if="isTypeVisible" class="flexbox-menu-left wrapper-bottom-margin">
+          <div :class="{ 'children-orientation' : true, selected: wt === 'H'}" @click="wt = 'H';">
+            <img src="../../../../assets/images/DrillH.png" alt="" style="vertical-align: sub; opacity: 0.8;" />
+          </div>
+          <div :class="{ 'children-orientation' : true, selected: wt === 'HT'}" @click="wt = 'HT';">
+            <img src="../../../../assets/images/DrillHT.png" alt="" style="vertical-align: sub; opacity: 0.8;" />
+          </div>
         </div>
-        <div class="wrapper-position">
-          <label class="inline-block normal attribute">Type:</label>
-          <select class="dimension-select w-select" v-model="wt">
-            <option :value="'H'">H</option>
-            <option v-if="di > 0" :value="'HH'">HH</option>
-            <option :value="'HT'">HT</option>
-          </select>
+        <div v-if="isSideVisible" class="flexbox-menu-left wrapper-bottom-margin">
+          <div :class="{ 'children-orientation' : true, selected: sd === 1}" @click="sd = 1;">
+            <img src="../../../../assets/images/DrillSD1.png" alt="" style="vertical-align: sub; opacity: 0.8;" />
+          </div>
+          <div :class="{ 'children-orientation' : true, selected: sd === 2}" @click="sd = 2;">
+            <img src="../../../../assets/images/DrillSD2.png" alt="" style="vertical-align: sub; opacity: 0.8;" />
+          </div>
         </div>
-        <div v-if="isSideVisible" class="wrapper-position">
-          <label class="inline-block normal attribute">Side:</label>
-          <select class="dimension-select w-select" v-model="sd">
-            <option :value="1">PSide</option>
-            <option :value="2">MSide</option>
-          </select>
+        <div v-if="isDepthVisible" class="wrapper-position wrapper-bottom-margin">
+          <label class="inline-block normal attribute wrapper-margin-tbauto">
+            <img v-if="wt === 'HH'" src="../../../../assets/images/DrillHHDP.png" alt="" height="45px" style="vertical-align: sub; opacity: 0.8;" />
+            <img v-else src="../../../../assets/images/DrillHDP.png" alt="" height="45px" style="vertical-align: sub; opacity: 0.8;" />
+          </label>
+          <input class="dimension-box position w-input wrapper-margin-tbauto" v-model.number="dp" @keydown="applyDP" @blur="applyDP"/>
+          <label style="font-weight: normal; margin: auto;">mm</label>
         </div>
-        <div v-if="isDirectionVisible" class="wrapper-position">
+        <div v-if="isDirectionVisible" class="wrapper-position wrapper-bottom-margin">
           <label class="inline-block normal attribute">Direction:</label>
           <select class="dimension-select w-select" v-model="dir">
             <option :value="'XM'">XM</option>
@@ -79,19 +102,11 @@
             <option :value="'YM'">YM</option>
           </select>
         </div>
-        <div v-if="wt !== 'HH'" class="flexbox-menu-left">
-          <div :class="{ 'children-orientation' : true, selected: di > 0}" @click="changeDrillShape('round')">
-            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 16 16">
-              <g fill="#626262"><circle cx="8" cy="8" r="8"/></g>
-            </svg>
-          </div>
-          <div :class="{ 'children-orientation' : true, selected: di === 0}" @click="changeDrillShape('rect')">
-            <svg aria-hidden="true" focusable="false" width="3.5em" height="3.7em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-                 preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-              <rect width="24" height="24" x="0" y="0" class="uim-primary" rx="5" fill="#626262"/>
-            </svg>
-          </div>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" style="border: none;"
+          @click="isRemovable ? deleteDrill() : null" title="Delete Drill">
+          <em class="el-icon-delete" style="font-size: 25px;"/>
         </div>
       </div>
     </div>
@@ -131,6 +146,8 @@ export default {
     selectedDrillIndex() {
       if (!this.selectedObject3D) return -1;
       if (this.selectedObject3D.object3d.isPanel) return -1;
+      if (this.selectedObject3D.object3d.isShapeVertex) return -1;
+      if (this.selectedObject3D.object3d.name.includes('_SHAPE')) return -1;
       const { name } = this.selectedObject3D.object3d;
       const drillIndex = Number(name.split('_')[2]);
       return Number(drillIndex);
@@ -138,9 +155,34 @@ export default {
     isRemovable() {
       return this.selectedDrillIndex !== -1;
     },
+    positionView() {
+      const drillIndex = this.selectedDrillIndex;
+      if (drillIndex === -1) return null;
+
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+      const panel = window.panels[id];
+      const work = panel.works[drillIndex];
+
+      if (work.wt !== 'HH') return { up: 'x', right: 'y' };
+
+      if (panel.ptype === 'FP') {
+        if (work.dir === 'XM' || work.dir === 'XP') return { up: 'y', right: 'z' };
+        return { up: 'x', right: 'z' };
+      }
+      if (panel.ptype === 'VP') {
+        if (work.dir === 'XM' || work.dir === 'XP') return { up: 'z', right: 'y' };
+        return { up: 'x', right: 'z' };
+      }
+      if (panel.ptype === 'VDP') {
+        if (work.dir === 'XM' || work.dir === 'XP') return { up: 'z', right: 'y' };
+        return { up: 'z', right: 'x' };
+      }
+
+      return null;
+    },
     isPositionVisible() {
       const drillIndex = this.selectedDrillIndex;
-      if (drillIndex === -1) return { x: true, y: true, z: false };
+      if (drillIndex === -1) return { x: false, y: false, z: false };
 
       const id = this.selectedObject3D.object3d.name.split('_')[0];
       const work = window.panels[id].works[drillIndex];
@@ -156,21 +198,35 @@ export default {
     },
     isDepthVisible() {
       const drillIndex = this.selectedDrillIndex;
-      if (drillIndex === -1) return true;
+      if (drillIndex === -1) return false;
 
       const id = this.selectedObject3D.object3d.name.split('_')[0];
-      return window.panels[id].works[drillIndex].wt !== 'HT';
+      const work = window.panels[id].works[drillIndex];
+      if (!work.di || work.di === 0) return false;
+      return work.wt !== 'HT';
+    },
+    isTypeVisible() {
+      const drillIndex = this.selectedDrillIndex;
+      if (drillIndex === -1) return false;
+
+      const id = this.selectedObject3D.object3d.name.split('_')[0];
+      const work = window.panels[id].works[drillIndex];
+      if (work.wt === 'HH') return false;
+      if (!work.di || work.di === 0) return false;
+      return true;
     },
     isSideVisible() {
       const drillIndex = this.selectedDrillIndex;
-      if (drillIndex === -1) return true;
+      if (drillIndex === -1) return false;
 
       const id = this.selectedObject3D.object3d.name.split('_')[0];
-      return window.panels[id].works[drillIndex].wt === 'H';
+      const work = window.panels[id].works[drillIndex];
+      if (!work.di || work.di === 0) return false;
+      return work.wt === 'H';
     },
     isDirectionVisible() {
       const drillIndex = this.selectedDrillIndex;
-      if (drillIndex === -1) return true;
+      if (drillIndex === -1) return false;
 
       const id = this.selectedObject3D.object3d.name.split('_')[0];
       return window.panels[id].works[drillIndex].wt === 'HH';
@@ -381,6 +437,9 @@ export default {
         }
       },
     },
+    isChromeBrowser() {
+      return navigator.appVersion.toLowerCase().includes('chrome');
+    },
   },
   methods: {
     applyX(event) {
@@ -457,6 +516,8 @@ export default {
           if (works[drillIndex].di) {
             works[drillIndex].sx = works[drillIndex].di;
             works[drillIndex].sy = works[drillIndex].di;
+            works[drillIndex].sd = 1;
+            works[drillIndex].wt = 'HT';
             works[drillIndex].di = 0;
           }
         }
@@ -563,9 +624,16 @@ export default {
     border: none;
     width: 80% !important;
     height: 34px;
-    background-color: #f3f3f3;
     outline: none;
     margin-top: 2px;
     margin-left: 10px;
+  }
+  .wrapper-bottom-margin {
+    border-bottom: solid 1px lightgray;
+    padding: 10px;
+  }
+  .wrapper-margin-tbauto {
+    margin-top: auto;
+    margin-bottom: auto;
   }
 </style>

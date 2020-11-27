@@ -33,6 +33,14 @@
     </div>
     <h3 v-else>{{t('importyourproject')}}</h3>
     <div class="trait-horizontal middle"></div>
+    <div v-if="isImport && this.$route.query.spufenb === 'true'">
+      {{t('projectid')}}:
+      <input v-model="projectid" id="projectID" type="text" title="" size="5" onkeyup="this.value=this.value.replace(/[^\d]/,'')"/>
+      <a @click="importProject(projectid)" class="eel-button medium smallbutton w-inline-block"
+         target="_blank" style="margin-left: 10px;">
+        <div>{{t('import')}}</div>
+      </a>
+    </div>
     <div class="list-projet-rm">
       <div v-for="(project, pid) in otherProjects" :key="pid" class="ard-projectlistitem w-clearfix">
         <img :src="projectImgUrl(project.id_user_design)" width="140" alt="" class="ard-projectlist-projectimg">
@@ -72,6 +80,7 @@ export default {
       newName: '', // New name for Save As
       isImport: false,
       actionWatcherDestroyer: () => {},
+      projectid: 0,
     };
   },
   created() {

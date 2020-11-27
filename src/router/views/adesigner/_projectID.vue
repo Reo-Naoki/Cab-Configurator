@@ -39,7 +39,15 @@ export default {
       try {
         const response = await callDajax('getrlistfromprojectid', { project_id: this.projectID });
         const json = JSON.parse(response.data.serverresult) || { data: {} };
-        this.data = json.data;
+        if (json.error) {
+          MessageBox.alert(json.error, {
+            type: 'error',
+            title: 'Erreur',
+            confirmButtonText: 'Ok',
+          });
+        } else {
+          this.data = json.data;
+        }
       } catch (e) {
         console.error(e);
         MessageBox.alert('Impossible de charger le projet, contactez nous si le problème persiste.', {

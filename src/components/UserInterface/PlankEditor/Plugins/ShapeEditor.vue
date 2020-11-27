@@ -1,23 +1,14 @@
 <template>
   <div v-if="selectedObject3D">
     <div class="wrapper-name-panel">
-      <div>Planche n°{{ selectedObject3D.object3d.name.split('_')[0] }}</div>
-      <div v-bind:class="[`round-icon-2${enableCreatePoint ? '' : ' medium-emphasis'}`]" @click="createPoint()" title="Create Point">
+      <div v-bind:class="[`round-icon-2 ${enableCreatePoint ? '' : 'medium-emphasis'} createbtn`]" @click="createPoint()" title="Create Point">
         <svg aria-hidden="true" focusable="false" width="1.2em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
              preserveAspectRatio="xMidYMid meet" viewBox="3 1 20 20">
           <path d="M17 15.7V13h2v4l-9 4l-7-7l4-9h4v2H8.3l-2.9 6.6l5 5l6.6-2.9M22 5v2h-3v3h-2V7h-3V5h3V2h2v3h3z" :fill="`${enableCreatePoint ? '#ffffff' : '#aaaaaa'}`"/>
         </svg>
       </div>
-      <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" @click="isRemovable ? deletePoint() : null" title="Delete Point">
-        <svg aria-hidden="true" focusable="false" width="1em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);"
-             preserveAspectRatio="xMidYMid meet" viewBox="2 1 20 20">
-          <path d="M21.1 15.5L19 17.6l-2.1-2.1l-1.4 1.4l2.1 2.1l-2.1 2.1l1.4 1.4l2.1-2.1l2.1 2.1l1.4-1.4l-2.1-2.1l2.1-2.1l-1.4-1.4M16
-                  5v4.6L10.6 15H9.1l-2-6H8V3H2v6h3l2 6H6v6h6v-4.6l5.4-5.4H22V5h-6M6 7H4V5h2v2m4 12H8v-2h2v2M20 9h-2V7h2v2"
-                  :fill="`${isRemovable ? '#aaaaaa' : '#ffffff'}`"/>
-        </svg>
-      </div>
     </div>
-    <div>
+    <div v-if="selectedPointIndex > -1">
       <div class="title-menu-left"><h2 class="heading-menu">Point</h2></div>
       <div class="content-menu-left">
         <div class="wrapper-position">
@@ -32,6 +23,12 @@
         <div class="wrapper-position">
           <label class="inline-block normal attribute">Angle:</label>
           <label class="position angle ml-2">{{angle}}°</label>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div v-bind:class="[`round-icon-2 medium-emphasis red ${isRemovable ? '' : 'disabled'}`]" style="border: none;"
+          @click="isRemovable ? deletePoint() : null" title="Delete Drill">
+          <em class="el-icon-delete" style="font-size: 25px;"/>
         </div>
       </div>
     </div>
@@ -61,6 +58,8 @@ export default {
     selectedPointIndex() {
       if (!this.selectedObject3D) return -1;
       if (this.selectedObject3D.object3d.isPanel) return -1;
+      if (this.selectedObject3D.object3d.isDrillGeometry) return -1;
+      if (this.selectedObject3D.object3d.name.includes('_drill')) return -1;
       const { name } = this.selectedObject3D.object3d;
       const pointIndex = Number(name.split('SHAPE')[1].split('M')[0]);
       return Number(pointIndex);

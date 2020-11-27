@@ -58,10 +58,7 @@ export default {
     hplCatalog() { return ({ slug: 'title_colorshpl', catalog: this.colors_hpl }); },
     selectedObject3DIndex() {
       if (!this.selectedObject3D) return -1;
-      if (this.selectedObject3D.object3d.isDimension || this.selectedObject3D.object3d.isCoordinate) {
-        return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name.split('_')[0]);
-      }
-      return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name);
+      return this.panels.findIndex(p => p.id === this.selectedObject3D.object3d.name.split('_')[0]);
     },
     panel() {
       return this.panels[this.selectedObject3DIndex] || undefined;

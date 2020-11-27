@@ -31,6 +31,14 @@ export default {
       type: Array,
       required: false,
     },
+    x: {
+      type: Number,
+      required: true,
+    },
+    y: {
+      type: Number,
+      required: true,
+    },
   },
   data() {
     return {
@@ -40,6 +48,7 @@ export default {
       baseElement: null,
       edgeElements: [],
       containerElement: null,
+      showAllEdges: false,
     };
   },
   computed: {
@@ -110,6 +119,10 @@ export default {
       } = this;
 
       if (plankPoints) {
+        const borderedEdges = new Array(4);
+        const borderedCount = new Array(4);
+        const edgePositions = new Array(4);
+
         plankPoints.forEach((point, index) => {
           const nextIndex = (index + 1) % plankPoints.length;
           let edgePosition = new Vector3(plankPosition.x, plankPosition.y, plankPosition.z);
@@ -138,7 +151,33 @@ export default {
 
           this.edgeElements[index].style.top = `${vectorEdge2D.y}px`;
           this.edgeElements[index].style.left = `${vectorEdge2D.x}px`;
+
+          if (!this.showAllEdges) {
+            const borderNumber = this.borderedEdgeID(point, plankPoints[nextIndex]);
+            if (borderNumber > 0 && !borderedEdges[borderNumber - 1]) {
+              borderedEdges[borderNumber - 1] = index;
+              borderedCount[borderNumber - 1] = 1;
+              edgePositions[borderNumber - 1] = edgePosition;
+              this.edgeElements[index].style.display = 'unset';
+            } else {
+              if (borderNumber > 0) {
+                borderedCount[borderNumber - 1] += 1;
+                edgePositions[borderNumber - 1].add(edgePosition);
+              }
+              this.edgeElements[index].style.display = 'none';
+            }
+          }
         });
+
+        if (!this.showAllEdges) {
+          borderedEdges.forEach((edge, index) => {
+            edgePositions[index].divideScalar(borderedCount[index]);
+            const vectorEdge2D = this.projectVectorTo2D(edgePositions[index].x, edgePositions[index].y, edgePositions[index].z);
+
+            this.edgeElements[edge].style.top = `${vectorEdge2D.y}px`;
+            this.edgeElements[edge].style.left = `${vectorEdge2D.x}px`;
+          });
+        }
       } else {
         const topPosition = new Vector3(
           plankPosition.x,
@@ -176,6 +215,13 @@ export default {
         this.baseElement.style.top = `${vectorBase2D.y}px`;
         this.baseElement.style.left = `${vectorBase2D.x}px`;
       }
+    },
+    borderedEdgeID(point1, point2) {
+      if (point1[0] === 0 && point2[0] === 0) return 1;
+      if (point1[0] === this.x && point2[0] === this.x) return 2;
+      if (point1[1] === 0 && point2[1] === 0) return 3;
+      if (point1[1] === this.y && point2[1] === this.y) return 4;
+      return 0;
     },
     addElementsToDOM() {
       const appDiv = document.getElementById('content-3d');
@@ -270,7 +316,19 @@ export default {
       const newEdges = [...this.edges];
 
       if (edgeType.includes('point')) {
-        newEdges[Number(edgeType.split('_')[1])] = value;
+        const { plankPoints } = this;
+        const edgeIndex = Number(edgeType.split('_')[1]);
+        newEdges[edgeIndex] = value;
+
+        if (!this.showAllEdges) {
+          const borderNumber = this.borderedEdgeID(plankPoints[edgeIndex], plankPoints[(edgeIndex + 1) % plankPoints.length]);
+          plankPoints.forEach((point, index) => {
+            const nextIndex = (index + 1) % plankPoints.length;
+            if (this.borderedEdgeID(point, plankPoints[nextIndex]) === borderNumber) {
+              newEdges[index] = value;
+            }
+          });
+        }
       }
 
       // edgeType : top, left, right, base

@@ -36,6 +36,7 @@
 <script>
 import { mapGetters, mapState } from 'vuex';
 import { Vector2, Vector3 } from 'three';
+import EventBus from '../../EventBus/EventBus';
 import PlankCoordinate from './Plugins/PlankCoordinate';
 import PlankDimensions from './Plugins/PlankDimensions';
 
@@ -90,7 +91,7 @@ export default {
         };
         const newPosition = {
           x: this.position.x + (direction === 'left' ? -dimensionOffset.width / 2 : dimensionOffset.width / 2),
-          y: this.position.y + (direction === 'left' ? -dimensionOffset.height / 2 : dimensionOffset.height / 2),
+          y: this.position.y + dimensionOffset.height / 2,
           z: this.position.z + (direction === 'upper' ? -dimensionOffset.depth / 2 : dimensionOffset.depth / 2),
         };
 
@@ -110,11 +111,21 @@ export default {
             y: (panelType !== 'FP') ? py - (direction === 'left' ? dimensionOffset.height : 0) : newPanelPosition.y,
             z: (panelType !== 'VP') ? pz - (direction === 'upper' ? dimensionOffset.depth : 0) : newPanelPosition.z,
           };
-          window.panels[id].dimensionsByType = {
+
+          const newDimension = {
             width: panelType !== 'VDP' ? pWidth + dimensionOffset.width : pWidth,
             height: panelType !== 'FP' ? pHeight + dimensionOffset.height : pHeight,
             depth: panelType !== 'VP' ? pDepth + dimensionOffset.depth : pDepth,
           };
+          if (window.panels[id].shapePoints) {
+            const maxX = Math.max(...window.panels[id].shapePoints.map(p => p[0]));
+            const maxY = Math.max(...window.panels[id].shapePoints.map(p => p[1]));
+            const minX = Math.min(...window.panels[id].shapePoints.map(p => p[0]));
+            const minY = Math.min(...window.panels[id].shapePoints.map(p => p[1]));
+            const newPoints = window.panels[id].shapePoints.map(point => (this.isResizablePoint(point, maxX, maxY) ? this.resizePoint(point, newDimension, minX, minY, maxX, maxY, panelType) : point));
+            window.panels[id].shapePoints = newPoints;
+          }
+          window.panels[id].dimensionsByType = newDimension;
         });
       },
     },
@@ -200,6 +211,24 @@ export default {
     getChildGroupNames(exceptName = null) {
       return this.getChildGroups().map(group => group.name).filter(name => name !== exceptName);
     },
+    isResizablePoint(point, maxX, maxY) {
+      return point[0] === maxX || point[1] === maxY || point[0] === 0 || point[1] === 0;
+    },
+    resizePoint(point, dimension, minX, minY, maxX, maxY, plankType) {
+      if (plankType === 'FP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.width / 10) : point[1]];
+      }
+      if (plankType === 'VP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.width / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
+      }
+      if (plankType === 'VDP') {
+        return [point[0] === maxX ? Math.max(minX + 1, dimension.depth / 10) : point[0],
+          point[1] === maxY ? Math.max(minY + 1, dimension.height / 10) : point[1]];
+      }
+      return null;
+    },
     select(isSelected) {
       const { object3d } = this.hoveredObject3D ? this.hoveredObject3D : this.selectedObject3D || {};
 
@@ -269,6 +298,13 @@ export default {
         if (!this.moveDirection || this.moveDirection === 'z') newOrigin.setZ(position.z);
         this.position = newOrigin;
       }
+    },
+    moveByOffset(offset) {
+      const { x, y, z } = this.position;
+      const newOrigin = new Vector3(x, y, z);
+      newOrigin.add(offset);
+      this.position = newOrigin;
+      window.connections.setConnections().then(() => EventBus.$emit('save'));
     },
     resize(mesh, position, newVector, magnetism) {
       if (mesh.isDimension) this.$refs.dimensions.resize(mesh.name, position, newVector, magnetism);

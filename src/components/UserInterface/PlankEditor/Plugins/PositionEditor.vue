@@ -21,6 +21,7 @@ import { mapState } from 'vuex';
 
 export default {
   name: 'PositionEditor',
+  props: ['selectedObject3DIndex', 'panel', 'group'],
   computed: {
     ...mapState('Panels', [
       'panels',
@@ -29,28 +30,6 @@ export default {
     ...mapState('Camera', [
       'selectedObject3D',
     ]),
-    selectedObject3DIndex() {
-      if (!this.selectedObject3D) return -1;
-      const selectedObject = this.selectedObject3D.object3d;
-
-      if (selectedObject.isDimension || selectedObject.isCoordinate) {
-        if (selectedObject.isGroupArrow) {
-          if (selectedObject.isDimension) return this.groups.findIndex(p => p.name === selectedObject.name.split('_dimensions')[0]);
-          if (selectedObject.isCoordinate) return this.groups.findIndex(p => p.name === selectedObject.name.split('_coordinate')[0]);
-        }
-        return this.panels.findIndex(p => p.id === selectedObject.name.split('_')[0]);
-      }
-
-      if (selectedObject.isPanel) return this.panels.findIndex(p => p.id === selectedObject.name);
-      return this.groups.findIndex(p => p.name === selectedObject.name);
-    },
-    panel() {
-      if (!this.selectedObject3D || this.selectedObject3D.object3d.isGroupArrow || this.selectedObject3D.object3d.isGroup) return null;
-      return this.panels[this.selectedObject3DIndex];
-    },
-    group() {
-      return this.groups[this.selectedObject3DIndex];
-    },
     position: {
       get() {
         if (this.panel) {

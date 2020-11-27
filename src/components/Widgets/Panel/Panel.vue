@@ -61,7 +61,7 @@ export default {
       switch (this.ptype) {
         case 'VP':
           doorPanelData = VDoorPanel.data();
-          if (this.thick < 18 || connections.some(c => c.type === 'hdfgrove')) {
+          if (this.thick < 5 || connections.some(c => c.type === 'hdfgrove')) {
             if (this.prevType === 'DoorPanel') { // Convert DoorPanel into VerticalPanel(Set VP dimension with magnetic panel dimension)
               panelPos[1] -= doorPanelData.dimensionsMarginLeft / 10;
               panelPos[2] -= doorPanelData.dimensionsMarginBottom / 10;

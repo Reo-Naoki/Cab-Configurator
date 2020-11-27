@@ -72,6 +72,7 @@
     "currentproject": "Projet en cours",
     "saveas": "Enregistrer sous...",
     "projectname": "Donnez un nom à votre projet",
+    "projectid": "Projet ID",
     "open": "Ouvrir",
     "import": "Importer",
     "noproject": "Vous n'avez aucun projet enregistré pour le moment",

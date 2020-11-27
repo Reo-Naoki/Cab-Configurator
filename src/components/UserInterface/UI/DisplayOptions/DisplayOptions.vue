@@ -1,28 +1,22 @@
 <template>
   <div class="wrapper-switch">
-    <LayerDisplayer v-for="(layer, index) in layers" :key="index" :layer="layer"/>
-    <el-divider v-if="layers.length > 0" margin='1px 0' height="3px"/>
     <ColorPaletteDisplayer />
     <ConnectionsDisplayer />
   </div>
 </template>
 
 <script>
-import {
-  Divider,
-} from 'element-ui';
-import ConnectionsDisplayer from './Plugins/ConnectionsDisplayer';
+import { Divider, Button } from 'element-ui';
 import ColorPaletteDisplayer from './Plugins/ColorPaletteDisplayer';
-import LayerDisplayer from './Plugins/LayerDisplayer';
+import ConnectionsDisplayer from './Plugins/ConnectionsDisplayer';
 
 export default {
   name: 'DisplayOptions',
-  props: ['layers'],
   components: {
+    [Divider.name]: Divider,
+    [Button.name]: Button,
     ColorPaletteDisplayer,
     ConnectionsDisplayer,
-    LayerDisplayer,
-    [Divider.name]: Divider,
   },
 };
 </script>
@@ -34,5 +28,11 @@ export default {
   .el-divider {
     height: 2px;
     margin: 1px 0;
+  }
+  .toolbar-button {
+    padding: 2px;
+    background-color: #f0f0f0;
+    margin: 2px;
+    border: black solid 0px;
   }
 </style>

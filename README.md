@@ -1,4 +1,4 @@
-# vgl-adesigner
+# Cab-Configurator
 
 ## Project setup
 ```

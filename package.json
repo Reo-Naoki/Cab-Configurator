@@ -10,7 +10,7 @@
     "import-webflow": "node build/import-webflow.js"
   },
   "dependencies": {
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "core-js": "^3.3.6",
     "element-ui": "^2.12.0",
     "three": "^0.110.0",
